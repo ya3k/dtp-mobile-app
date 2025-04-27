@@ -1,0 +1,40 @@
+import { TourDetailDataResType, TourResType } from "@/schemaValidation/tour.schema"
+import api from "./axiosInstance"
+import { apiEndpoint } from "@/config/routes"
+
+export const tourApiRequest = {
+    getOdataTour: async (query?: string) => {
+        try {
+            // Ensure we always have a query parameter to prevent caching
+            const queryString = query
+            
+            // Add cache control headers
+            const headers = {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            };
+            
+            const response = await api.get<{ value: TourResType[] }>(
+                `${apiEndpoint.odataTour}${queryString}`,
+                { headers }
+            );
+            
+            return response.data.value;
+        } catch (error) {
+            console.error("Error fetching tour data:", error)
+            throw error
+        }
+    },
+    getTourDetail: async (id: any) =>{
+        try {           
+            const response = await api.get<TourDetailDataResType>(
+                `${apiEndpoint.tours}/${id}`,
+            );          
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching tour data:", error)
+            throw error
+        }
+    }
+}
