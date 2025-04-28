@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { TicketKind } from '@/components/tours/tour-detail/tour-schedule-ticket'
+import { TicketKind } from '@/types/ticketKind'
 
 export type CartItem = {
   tourId: string
@@ -17,16 +17,19 @@ export type CartItem = {
 
 interface CartState {
   items: CartItem[]
+  directCheckoutItem: CartItem | null
   addItem: (item: CartItem) => void
   removeItem: (scheduleId: string) => void
   updateQuantity: (scheduleId: string, ticketId: string, quantity: number) => void
   clearCart: () => void
+  setDirectCheckoutItem: (item: CartItem | null) => void
   getTotalPrice: () => number
   getItemCount: () => number
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
+  directCheckoutItem: null,
   
   addItem: (item) => {
     set((state) => {
@@ -69,11 +72,7 @@ export const useCartStore = create<CartState>((set, get) => ({
             quantity: Math.max(0, quantity)
           }
           
-          // If adult ticket, ensure minimum of 1
-          if (updatedTickets[ticketIndex].kind === TicketKind.Adult) {
-            updatedTickets[ticketIndex].quantity = Math.max(1, updatedTickets[ticketIndex].quantity)
-          }
-          
+          // All ticket types can now be zero
           item.tickets = updatedTickets
           
           // Recalculate total price
@@ -82,6 +81,12 @@ export const useCartStore = create<CartState>((set, get) => ({
             0
           )
           
+          // If all ticket quantities are 0, remove the item from the cart
+          const hasTickets = updatedTickets.some(ticket => ticket.quantity > 0)
+          if (!hasTickets) {
+            return { items: state.items.filter(i => i.scheduleId !== scheduleId) }
+          }
+          
           updatedItems[itemIndex] = item
           return { items: updatedItems }
         }
@@ -89,6 +94,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       
       return state
     })
+  },
+  
+  setDirectCheckoutItem: (item) => {
+    set({ directCheckoutItem: item })
   },
   
   clearCart: () => set({ items: [] }),

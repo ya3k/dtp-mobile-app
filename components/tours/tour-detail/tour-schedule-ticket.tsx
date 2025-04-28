@@ -1,20 +1,11 @@
-"use client"
-
-import { View, Text, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet } from "react-native"
+import { View, Text, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Alert } from "react-native"
 import { useState, useEffect } from "react"
 import type { FullTicketScheduleType } from "@/schemaValidation/ticket-schedule.schema"
 import { formatPrice } from "@/libs/utils"
 import { AntDesign, Feather } from "@expo/vector-icons"
 import { useCartStore, CartItem } from "@/store/cartStore"
-
-export enum TicketKind {
-  Adult = 0,
-  Child = 1,
-  PerGroupOfThree = 2,
-  PerGroupOfFive = 3,
-  PerGroupOfSeven = 4,
-  PerGroupOfTen = 5,
-}
+import { TicketKind } from "@/types/ticketKind"
+import { useRouter } from "expo-router"
 
 const getTicketKindLabel = (kind: TicketKind): string => {
   switch (kind) {
@@ -50,7 +41,6 @@ interface TourScheduleTicketProps {
   visible: boolean
   onClose: () => void
   tourId: string
-  onConfirm: (selection: TicketSelectionType) => void
   scheduleData?: FullTicketScheduleType
   isLoading: boolean
   mode: "cart" | "book"
@@ -61,7 +51,6 @@ const TourScheduleTicket = ({
   visible,
   onClose,
   tourId,
-  onConfirm,
   scheduleData,
   isLoading,
   mode = "cart",
@@ -75,7 +64,8 @@ const TourScheduleTicket = ({
     day: "",
   })
   const [selectedDateRange, setSelectedDateRange] = useState<string>("")
-  const addToCart = useCartStore((state) => state.addItem)
+  const { addItem, setDirectCheckoutItem } = useCartStore()
+  const router = useRouter()
 
   // Get screen dimensions
   const { height } = Dimensions.get("window")
@@ -123,7 +113,7 @@ const TourScheduleTicket = ({
             tickets: selectedTickets.map((ticket) => ({
               id: ticket.ticketTypeId,
               kind: ticket.ticketKind as TicketKind,
-              quantity: ticket.ticketKind === TicketKind.Adult ? 1 : 0, // Set adult tickets to 1 by default
+              quantity: 0, // Set all ticket types to 0 by default
               price: ticket.netCost,
             })),
             day: selectedDay,
@@ -159,22 +149,67 @@ const TourScheduleTicket = ({
     return ticketSelection.tickets.reduce((sum, ticket) => sum + ticket.price * ticket.quantity, 0)
   }
 
-  const handleConfirm = () => {
-    // For cart mode, add item to cart store
-    if (mode === 'cart') {
-      const cartItem: CartItem = {
-        tourId,
-        tourTitle,
-        scheduleId: ticketSelection.scheduleId,
-        day: ticketSelection.day,
-        tickets: ticketSelection.tickets,
-        totalPrice: getTotalPrice()
-      }
-      addToCart(cartItem)
+  const handleAddToCart = () => {
+    // Create cart item
+    const cartItem: CartItem = {
+      tourId,
+      tourTitle,
+      scheduleId: ticketSelection.scheduleId,
+      day: ticketSelection.day,
+      tickets: ticketSelection.tickets,
+      totalPrice: getTotalPrice()
     }
     
-    onConfirm(ticketSelection)
+    // Add to cart
+    addItem(cartItem)
+    
+    // Show success message
+    Alert.alert(
+      'Thành công',
+      'Đã thêm vào giỏ hàng của bạn.',
+      [{ text: 'OK', onPress: () => onClose() }]
+    )
+  }
+  
+  const handleOrderNow = () => {
+    // Create direct checkout item
+    const directItem: CartItem = {
+      tourId,
+      tourTitle,
+      scheduleId: ticketSelection.scheduleId,
+      day: ticketSelection.day,
+      tickets: ticketSelection.tickets,
+      totalPrice: getTotalPrice()
+    }
+    
+    // Set direct checkout item in store
+    setDirectCheckoutItem(directItem)
+    
+    // Close modal first to prevent UI flickering
     onClose()
+    
+    // Navigate to checkout
+    setTimeout(() => {
+      router.push({
+        pathname: "/(payment)/[id]/checkout",
+        params: { id: ticketSelection.scheduleId }
+      })
+    }, 300)
+  }
+
+  const handleConfirm = () => {
+    // Check if at least one ticket is selected
+    if (!hasTicketsSelected()) {
+      Alert.alert('Lỗi', 'Vui lòng chọn ít nhất một vé')
+      return
+    }
+    
+    // Call appropriate handler based on mode
+    if (mode === 'cart') {
+      handleAddToCart()
+    } else {
+      handleOrderNow()
+    }
   }
 
   const hasTicketsSelected = (): boolean => {
@@ -330,6 +365,7 @@ const TourScheduleTicket = ({
             {/* Ticket selection */}
             {selectedScheduleId && ticketSelection.tickets.length > 0 && (
               <View style={styles.ticketSection}>
+                <Text style={styles.sectionTitle}>Chọn loại vé</Text>
                 {ticketSelection.tickets.map((ticket) => (
                   <View key={ticket.id} style={styles.ticketItem}>
                     <View style={styles.ticketHeader}>
@@ -337,30 +373,24 @@ const TourScheduleTicket = ({
                       <Text style={styles.ticketPriceText}>{formatPrice(ticket.price)}</Text>
                     </View>
                     <View style={styles.ticketControls}>
-                      {ticket.kind === TicketKind.Adult && <Text style={styles.requiredText}>Phải ít nhất 1 vé</Text>}
                       <View style={styles.quantityControls}>
                         <TouchableOpacity
                           style={[
                             styles.quantityButton,
-                            ticket.kind === TicketKind.Adult && ticket.quantity <= 1 && styles.quantityButtonDisabled,
+                            ticket.quantity <= 0 && styles.quantityButtonDisabled
                           ]}
-                          onPress={() =>
-                            updateTicketQuantity(
-                              ticket.id,
-                              ticket.kind === TicketKind.Adult
-                                ? Math.max(1, ticket.quantity - 1) // Keep min 1 for adults
-                                : ticket.quantity - 1,
-                            )
-                          }
-                          disabled={ticket.kind === TicketKind.Adult && ticket.quantity <= 1}
+                          onPress={() => updateTicketQuantity(ticket.id, Math.max(0, ticket.quantity - 1))}
+                          disabled={ticket.quantity <= 0}
                         >
                           <AntDesign
                             name="minus"
                             size={16}
-                            color={ticket.kind === TicketKind.Adult && ticket.quantity <= 1 ? "#ccc" : "#333"}
+                            color={ticket.quantity <= 0 ? "#ccc" : "#333"}
                           />
                         </TouchableOpacity>
-                        <Text style={styles.quantityText}>{ticket.quantity}</Text>
+                        <View style={styles.quantityTextContainer}>
+                          <Text style={styles.quantityText}>{ticket.quantity}</Text>
+                        </View>
                         <TouchableOpacity
                           style={styles.quantityButton}
                           onPress={() => updateTicketQuantity(ticket.id, ticket.quantity + 1)}
@@ -378,8 +408,12 @@ const TourScheduleTicket = ({
           {/* Footer with total price and confirm button */}
           <View style={styles.footer}>
             <View style={styles.priceContainer}>
-              <Text style={styles.totalPriceText}>đ {formatPrice(getTotalPrice())}</Text>
+              <Text style={styles.totalPriceLabel}>Tổng thanh toán:</Text>
+              <Text style={styles.totalPriceText}>
+                {getTotalPrice() > 0 ? `${formatPrice(getTotalPrice())}` : "0 đ"}
+              </Text>
             </View>
+            
             <TouchableOpacity
               style={[styles.confirmButton, !hasTicketsSelected() && styles.confirmButtonDisabled]}
               disabled={!hasTicketsSelected()}
@@ -453,6 +487,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#333",
     marginBottom: 4,
+    maxWidth: '80%', // Prevent too long titles from overflowing
   },
   tourSubtitle: {
     fontSize: 13,
@@ -473,7 +508,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: 12,
     color: "#333",
   },
   dateRangeButton: {
@@ -493,26 +528,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   datePickerScroll: {
-    marginTop: 12,
+    marginTop: 16,
+    marginBottom: 8,
   },
   datePickerContent: {
     paddingVertical: 8,
+    paddingLeft: 4,
   },
   dateButton: {
-    marginRight: 12,
+    marginRight: 16,
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 100,
     borderWidth: 1,
     borderColor: "#E0E0E0",
     backgroundColor: "white",
+    minWidth: 80,
+    alignItems: 'center',
   },
   dateButtonSelected: {
     backgroundColor: "#FFF3E0",
     borderColor: "#FF8C00",
   },
   dateButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "500",
     textAlign: "center",
     color: "#333",
@@ -523,7 +562,7 @@ const styles = StyleSheet.create({
   indicatorContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 4,
+    marginTop: 6,
   },
   availabilityDot: {
     width: 8,
@@ -542,13 +581,13 @@ const styles = StyleSheet.create({
   legendContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 12,
     marginBottom: 16,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#777",
-    marginLeft: 4,
+    marginLeft: 8,
     marginRight: 16,
   },
   infoButton: {
@@ -558,6 +597,7 @@ const styles = StyleSheet.create({
   ticketSection: {
     paddingHorizontal: 16,
     paddingTop: 8,
+    paddingBottom: 16,
   },
   ticketItem: {
     paddingVertical: 16,
@@ -568,17 +608,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   ticketTypeText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "500",
     color: "#333",
+    flex: 1,
   },
   ticketPriceText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
     color: "#333",
+    minWidth: 80,
+    textAlign: 'right',
   },
   ticketControls: {
     flexDirection: "row",
@@ -590,10 +633,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#FF8C00",
     fontWeight: "500",
+    flex: 1,
+    marginRight: 8,
   },
   quantityControls: {
     flexDirection: "row",
     alignItems: "center",
+    minWidth: 100,
+    justifyContent: 'flex-end',
   },
   quantityButton: {
     width: 32,
@@ -609,12 +656,17 @@ const styles = StyleSheet.create({
     borderColor: "#F0F0F0",
     backgroundColor: "#FAFAFA",
   },
+  quantityTextContainer: {
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 8,
+  },
   quantityText: {
-    minWidth: 30,
-    textAlign: "center",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "500",
-    marginHorizontal: 12,
+    color: '#333',
+    textAlign: 'center',
   },
   footer: {
     paddingHorizontal: 16,
@@ -625,6 +677,12 @@ const styles = StyleSheet.create({
   },
   priceContainer: {
     marginBottom: 12,
+  },
+  totalPriceLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
   },
   totalPriceText: {
     fontSize: 18,
@@ -637,6 +695,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
+    width: '100%',
   },
   confirmButtonDisabled: {
     backgroundColor: "#E0E0E0",
@@ -645,6 +704,7 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "700",
+    textAlign: "center",
   },
   loadingContainer: {
     flex: 1,
@@ -665,4 +725,4 @@ const styles = StyleSheet.create({
   },
 })
 
-export default TourScheduleTicket
+export default TourScheduleTicket;

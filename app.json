@@ -5,17 +5,34 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "dtp",
+    "scheme": "dtpmobile",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dtpmobile"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/binhdinhtour.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.dtpmobile",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "dtpmobile"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -36,6 +53,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "25d24c83-b96f-4fcd-af8b-556def85d811"
+      }
     }
   }
 }

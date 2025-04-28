@@ -46,7 +46,7 @@ const _Layout = () => {
             }} />
             <Tabs.Screen name="basket" options={{
                 title: 'Giỏ Hàng',
-                headerShown: true,
+                headerShown: false,
                 tabBarIcon: ({ color, size }) => (
                     <Ionicons name="cart-outline" size={size} color={color} />
                 ),

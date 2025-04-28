@@ -142,21 +142,6 @@ const TourDetails = () => {
     });
   };
 
-  // Handle schedule and ticket confirmation
-  const handleScheduleConfirm = (selection: any) => {
-    console.log('Selected schedule and tickets:', selection);
-    
-    if (bookingMode === 'cart') {
-      // Add to cart logic
-      Alert.alert('Thành công', 'Đã thêm vào giỏ hàng của bạn.');
-    } else {
-      // Direct booking logic
-      Alert.alert('Đặt tour', 'Chuyển đến trang thanh toán.');
-      // Navigate to checkout or payment page
-      // router.push({ pathname: '/(checkout)/payment', params: { selection: JSON.stringify(selection) } });
-    }
-  };
-
   useEffect(() => {
     let isMounted = true;
     const fetchTourDetail = async () => {
@@ -310,7 +295,6 @@ const TourDetails = () => {
         visible={scheduleModalVisible}
         onClose={() => setScheduleModalVisible(false)}
         tourId={id as string}
-        onConfirm={handleScheduleConfirm}
         scheduleData={scheduleData}
         isLoading={isScheduleLoading}
         mode={bookingMode}

@@ -3,11 +3,10 @@ import React, { useState } from 'react'
 import { useCartStore, CartItem } from '@/store/cartStore'
 import { formatPrice } from '@/libs/utils'
 import { Ionicons, AntDesign, Feather } from '@expo/vector-icons'
-import { TicketKind } from '@/components/tours/tour-detail/tour-schedule-ticket'
 import { useRouter } from 'expo-router'
 import useAuth from '@/hooks/useAuth'
+import { TicketKind } from '@/types/ticketKind'
 
-// Since getTicketKindLabel isn't exported, we'll define it here
 const getTicketKindLabel = (kind: TicketKind): string => {
   switch (kind) {
     case TicketKind.Adult:
@@ -28,7 +27,7 @@ const getTicketKindLabel = (kind: TicketKind): string => {
 }
 
 const Basket = () => {
-  const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore()
+  const { items, removeItem, updateQuantity, getTotalPrice, clearCart, setDirectCheckoutItem } = useCartStore()
   const [isProcessing, setIsProcessing] = useState(false)
   const router = useRouter()
   const { isAuthenticated } = useAuth()
@@ -39,6 +38,25 @@ const Basket = () => {
     if (newQuantity >= 0) {
       updateQuantity(scheduleId, ticketId, newQuantity)
     }
+  }
+  
+  // Function to remove a specific ticket type from a tour
+  const handleRemoveTicket = (scheduleId: string, ticketId: string, ticketName: string) => {
+    Alert.alert(
+      'Xóa vé',
+      `Bạn có chắc muốn xóa vé "${ticketName}" khỏi đơn hàng này?`,
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: () => updateQuantity(scheduleId, ticketId, 0),
+        },
+      ]
+    )
   }
 
   // Function to handle item removal
@@ -81,8 +99,8 @@ const Basket = () => {
     )
   }
 
-  // Function to handle checkout
-  const handleCheckout = () => {
+  // Function to handle checkout for a specific item
+  const handleCheckoutItem = (item: CartItem) => {
     if (!isAuthenticated) {
       Alert.alert(
         'Yêu cầu đăng nhập',
@@ -102,19 +120,18 @@ const Basket = () => {
       return
     }
 
-    if (items.length === 0) {
-      Alert.alert('Giỏ hàng trống', 'Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán')
-      return
-    }
-
     setIsProcessing(true)
-    // Simulate processing time
+    // Process for a short time to show loading state
     setTimeout(() => {
       setIsProcessing(false)
-      // Here you would normally navigate to the checkout screen
-      Alert.alert('Thành công', 'Đang chuyển đến trang thanh toán...')
-      // router.push('/(checkout)/payment')
-    }, 1500)
+      // Set the direct checkout item
+      setDirectCheckoutItem(item)
+      // Navigate to the checkout page with the ID parameter
+      router.push({
+        pathname: "/(payment)/[id]/checkout",
+        params: { id: item.scheduleId }
+      })
+    }, 300)
   }
 
   const renderEmptyCart = () => (
@@ -152,48 +169,69 @@ const Basket = () => {
               <Text style={styles.ticketPrice}>{formatPrice(ticket.price)} × {ticket.quantity}</Text>
             </View>
             
-            <View style={styles.quantityControls}>
-              <TouchableOpacity 
-                style={[
-                  styles.quantityButton,
-                  (ticket.kind === TicketKind.Adult && ticket.quantity <= 1) && styles.quantityButtonDisabled
-                ]}
-                onPress={() => handleUpdateQuantity(
-                  item.scheduleId, 
-                  ticket.id, 
-                  ticket.quantity, 
-                  -1
-                )}
-                disabled={ticket.kind === TicketKind.Adult && ticket.quantity <= 1}
-              >
-                <AntDesign 
-                  name="minus" 
-                  size={14} 
-                  color={(ticket.kind === TicketKind.Adult && ticket.quantity <= 1) ? "#ccc" : "#333"} 
-                />
-              </TouchableOpacity>
+            <View style={styles.ticketActions}>
+              <View style={styles.quantityControls}>
+                <TouchableOpacity 
+                  style={styles.quantityButton}
+                  onPress={() => handleUpdateQuantity(
+                    item.scheduleId, 
+                    ticket.id, 
+                    ticket.quantity, 
+                    -1
+                  )}
+                  disabled={ticket.quantity <= 0}
+                >
+                  <AntDesign 
+                    name="minus" 
+                    size={14} 
+                    color={ticket.quantity <= 0 ? "#ccc" : "#333"} 
+                  />
+                </TouchableOpacity>
+                
+                <Text style={styles.quantityText}>{ticket.quantity}</Text>
+                
+                <TouchableOpacity 
+                  style={styles.quantityButton}
+                  onPress={() => handleUpdateQuantity(
+                    item.scheduleId, 
+                    ticket.id, 
+                    ticket.quantity, 
+                    1
+                  )}
+                >
+                  <AntDesign name="plus" size={14} color="#333" />
+                </TouchableOpacity>
+              </View>
               
-              <Text style={styles.quantityText}>{ticket.quantity}</Text>
-              
               <TouchableOpacity 
-                style={styles.quantityButton}
-                onPress={() => handleUpdateQuantity(
-                  item.scheduleId, 
-                  ticket.id, 
-                  ticket.quantity, 
-                  1
+                style={styles.removeTicketButton}
+                onPress={() => handleRemoveTicket(
+                  item.scheduleId,
+                  ticket.id,
+                  getTicketKindLabel(ticket.kind)
                 )}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <AntDesign name="plus" size={14} color="#333" />
+                <Feather name="x" size={16} color="#ef4444" />
               </TouchableOpacity>
             </View>
           </View>
         )
       ))}
       
-      <View style={styles.itemTotal}>
-        <Text style={styles.itemTotalLabel}>Tổng cộng:</Text>
-        <Text style={styles.itemTotalPrice}>{formatPrice(item.totalPrice)}</Text>
+      <View style={styles.itemFooter}>
+        <View style={styles.itemTotal}>
+          <Text style={styles.itemTotalLabel}>Tổng cộng:</Text>
+          <Text style={styles.itemTotalPrice}>{formatPrice(item.totalPrice)}</Text>
+        </View>
+        
+        <TouchableOpacity 
+          style={styles.checkoutItemButton}
+          onPress={() => handleCheckoutItem(item)}
+          disabled={isProcessing}
+        >
+          <Text style={styles.checkoutItemButtonText}>Thanh toán</Text>
+        </TouchableOpacity>
       </View>
     </View>
   )
@@ -213,37 +251,13 @@ const Basket = () => {
       </View>
 
       {items.length === 0 ? renderEmptyCart() : (
-        <>
-          <FlatList
-            data={items}
-            keyExtractor={(item) => item.scheduleId}
-            renderItem={renderCartItem}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
-          
-          <View style={styles.footer}>
-            <View style={styles.totalContainer}>
-              <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
-              <Text style={styles.totalPrice}>{formatPrice(getTotalPrice())}</Text>
-            </View>
-            
-            <TouchableOpacity 
-              style={[
-                styles.checkoutButton,
-                isProcessing && styles.checkoutButtonDisabled
-              ]}
-              onPress={handleCheckout}
-              disabled={isProcessing || items.length === 0}
-            >
-              {isProcessing ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.checkoutButtonText}>Tiến hành thanh toán</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </>
+        <FlatList
+          data={items}
+          keyExtractor={(item) => item.scheduleId}
+          renderItem={renderCartItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
       )}
     </View>
   )
@@ -300,7 +314,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 16,
-    paddingBottom: 120,
+    paddingBottom: 24,
   },
   cartItem: {
     backgroundColor: 'white',
@@ -352,9 +366,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
   },
+  ticketActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 8,
+  },
+  removeTicketButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#fee2e2',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quantityButton: {
     width: 28,
@@ -377,12 +404,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginHorizontal: 8,
   },
-  itemTotal: {
+  itemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 12,
     paddingTop: 8,
+  },
+  itemTotal: {
+    flex: 1,
   },
   itemTotalLabel: {
     fontSize: 14,
@@ -393,6 +423,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
+  },
+  checkoutItemButton: {
+    backgroundColor: '#FF8C00',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkoutItemButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
   },
   footer: {
     position: 'absolute',
