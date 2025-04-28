@@ -11,6 +11,8 @@ import { formatPrice } from '@/libs/utils';
 import RenderHtml from 'react-native-render-html';
 import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
+import TourScheduleTicket from '@/components/tours/tour-detail/tour-schedule-ticket';
+import { FullTicketScheduleType } from '@/schemaValidation/ticket-schedule.schema';
 
 // Tắt cảnh báo về defaultProps
 LogBox.ignoreLogs([
@@ -18,7 +20,7 @@ LogBox.ignoreLogs([
 ]);
 
 // Component tùy chỉnh bọc RenderHtml để xử lý trước các props
-const SafeRenderHtml = ({ html, ...props }) => {
+const SafeRenderHtml = ({ html, ...props }: { html: string; contentWidth?: number; tagsStyles?: any; systemFonts?: string[]; renderersProps?: any }) => {
   const { width } = useWindowDimensions();
   
   // Memoize các props để tránh re-render không cần thiết
@@ -41,6 +43,12 @@ const TourDetails = () => {
   const { isAuthenticated, accessToken } = useAuth();
   const router = useRouter();
   const { width } = useWindowDimensions();
+  
+  // Schedule modal state
+  const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
+  const [scheduleData, setScheduleData] = useState<FullTicketScheduleType | undefined>(undefined);
+  const [isScheduleLoading, setIsScheduleLoading] = useState(false);
+  const [bookingMode, setBookingMode] = useState<'cart' | 'book'>('cart');
 
   // Memoize render configurations to reduce rerenders
   const renderersProps = useMemo(() => ({
@@ -95,19 +103,58 @@ const TourDetails = () => {
     }
   };
 
+  // Fetch schedule data
+  const fetchScheduleData = async () => {
+    if (!id) return;
+    
+    try {
+      setIsScheduleLoading(true);
+      const response = await tourApiRequest.getTicketSchedule(id);
+      
+      // Handle the API response structure
+      if (response.success && response.data) {
+        setScheduleData(response.data);
+      } else {
+        throw new Error(response.message || 'Failed to load schedule data');
+      }
+    } catch (error) {
+      console.error('Error fetching schedule data:', error);
+      Alert.alert('Lỗi', 'Không thể tải lịch trình và vé. Vui lòng thử lại sau.');
+    } finally {
+      setIsScheduleLoading(false);
+    }
+  };
+
   // Cart and booking handlers
   const handleAddToCart = () => {
     handleAuthAction(() => {
-      console.log('Added to cart:', id);
-      // Implement add to cart functionality here
+      setBookingMode('cart');
+      setScheduleModalVisible(true);
+      fetchScheduleData();
     });
   };
 
   const handleBookNow = () => {
     handleAuthAction(() => {
-      console.log('Booking now:', id);
-      // Implement direct booking functionality here
+      setBookingMode('book');
+      setScheduleModalVisible(true);
+      fetchScheduleData();
     });
+  };
+
+  // Handle schedule and ticket confirmation
+  const handleScheduleConfirm = (selection: any) => {
+    console.log('Selected schedule and tickets:', selection);
+    
+    if (bookingMode === 'cart') {
+      // Add to cart logic
+      Alert.alert('Thành công', 'Đã thêm vào giỏ hàng của bạn.');
+    } else {
+      // Direct booking logic
+      Alert.alert('Đặt tour', 'Chuyển đến trang thanh toán.');
+      // Navigate to checkout or payment page
+      // router.push({ pathname: '/(checkout)/payment', params: { selection: JSON.stringify(selection) } });
+    }
   };
 
   useEffect(() => {
@@ -239,7 +286,7 @@ const TourDetails = () => {
               )}
               
               {/* about */}
-              <View>
+              <View className='mt-3'>
                 <View className='mx-5'>
                   <View className="flex-row items-center py-3 mb-1 rounded-t-2xl">
                     <Text className='bg-teal-500 text-teal-500 font-bold mr-2'>|</Text>
@@ -258,8 +305,20 @@ const TourDetails = () => {
         </SafeAreaView>
       </ScrollView>
       
+      {/* Tour Schedule Modal */}
+      <TourScheduleTicket 
+        visible={scheduleModalVisible}
+        onClose={() => setScheduleModalVisible(false)}
+        tourId={id as string}
+        onConfirm={handleScheduleConfirm}
+        scheduleData={scheduleData}
+        isLoading={isScheduleLoading}
+        mode={bookingMode}
+        tourTitle={tourDetail.tour.title}
+      />
+      
       {/* Fixed bottom bar */}
-      <View className="border-t border-gray-200 bg-white px-4 py-2 mx-2">
+      <View className="border-t border-gray-200 bg-white px-4 p-3 mx-2">
         {/* Price row with badge */}
         <View className="flex-row items-center justify-between mb-2">
           <Text className="font-extrabold text-xl text-gray-800">{formatPrice(tourDetail.tour.onlyFromCost)}</Text>
@@ -268,16 +327,16 @@ const TourDetails = () => {
         {/* Buttons row */}
         <View className="flex-row gap-4">
           <TouchableOpacity 
-            className="bg-amber-400 flex-1 py-3 rounded-2xl font-semibold" 
+            className="bg-amber-400 flex-1 py-4 rounded-2xl font-semibold" 
             onPress={handleAddToCart}
           >
-            <Text className="font-bold text-center text-gray-800">Thêm vào giỏ hàng</Text>
+            <Text className="font-[800] text-center text-gray-800 text-lg">Thêm vào giỏ hàng</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            className="bg-orange-500 flex-1 py-3 rounded-2xl font-semibold" 
+            className="bg-orange-500 flex-1 py-4 rounded-2xl font-semibold" 
             onPress={handleBookNow}
           >
-            <Text className="font-bold text-white text-center">Đặt ngay</Text>
+            <Text className="font-[800] text-lg text-white text-center">Đặt ngay</Text>
           </TouchableOpacity>
         </View>
       </View>
