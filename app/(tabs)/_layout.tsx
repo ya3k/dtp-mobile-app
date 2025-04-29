@@ -52,9 +52,9 @@ const _Layout = () => {
                 ),
                 tabBarLabel: 'Giỏ Hàng'
             }} />
-            <Tabs.Screen name="profile" options={{
+            <Tabs.Screen name="account" options={{
                 title: 'Tài khoản',
-                headerShown: true,
+                headerShown: false,
                 tabBarIcon: ({ color, size }) => (
                     <Ionicons name="person-outline" size={size} color={color} />
                 ),

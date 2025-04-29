@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useAuth from '@/hooks/useAuth';
 import { useRouter } from 'expo-router';
+import { useUserStore } from '@/store/userStore';
 
 const Profile = () => {
   const { logout, isAuthenticated, role, accessToken, debugTokenInfo } = useAuth();
+  const { userProfile } = useUserStore();
   const router = useRouter();
-  
+
   // Check if user is admin
   const isAdmin = role === 'Admin';
 
@@ -47,6 +49,12 @@ const Profile = () => {
       [{ text: 'OK' }]
     );
   };
+  const handleUserProfile = () => {
+    router.replace('/(profile)/profile');
+  }
+
+
+
 
   // If not authenticated, show login prompt
   if (!isAuthenticated) {
@@ -57,8 +65,8 @@ const Profile = () => {
           <Text style={styles.loginSubtitle}>
             Vui lòng đăng nhập để xem thông tin tài khoản và quản lý đơn hàng của bạn
           </Text>
-          <TouchableOpacity 
-            style={styles.loginButton} 
+          <TouchableOpacity
+            style={styles.loginButton}
             onPress={() => router.push('/(auth)/login')}
           >
             <Text style={styles.loginButtonText}>Đăng nhập ngay</Text>
@@ -81,8 +89,8 @@ const Profile = () => {
               />
             </View>
             <View style={styles.userDetails}>
-              <Text style={styles.userName}>Tài khoản</Text>
-              <Text style={styles.userRole}>{role || 'Khách hàng'}</Text>
+              <Text style={styles.userName}>{userProfile?.userName}</Text>
+              <Text style={styles.userRole}>{userProfile?.email}</Text>
             </View>
           </View>
         </View>
@@ -90,19 +98,19 @@ const Profile = () => {
         {/* Menu Options */}
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Tài khoản</Text>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="person-outline" size={24} color="#555" />
-            <Text style={styles.menuItemText}>Thông tin cá nhân</Text>
+            <Text onPress={handleUserProfile} style={styles.menuItemText}>Thông tin cá nhân</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="wallet-outline" size={24} color="#555" />
             <Text style={styles.menuItemText}>Ví của tôi</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="cart-outline" size={24} color="#555" />
             <Text style={styles.menuItemText}>Đơn hàng của tôi</Text>
@@ -112,22 +120,22 @@ const Profile = () => {
 
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>Cài đặt</Text>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="globe-outline" size={24} color="#555" />
             <Text style={styles.menuItemText}>Ngôn ngữ</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="notifications-outline" size={24} color="#555" />
             <Text style={styles.menuItemText}>Thông báo</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-          
+
           {/* Debug button only visible for admin users */}
           {isAdmin && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={handleDebugToken}
             >
@@ -139,7 +147,7 @@ const Profile = () => {
         </View>
 
         {/* Log Out Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
         >

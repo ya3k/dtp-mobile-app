@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   checkoutItemButton: {
-    backgroundColor: '#FF8C00',
+    backgroundColor: 'rgba(28,150,140,1)',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,

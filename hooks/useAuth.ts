@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'expo-router';
 import * as authService from '@/services/authService';
 import { LoginSchemaType } from '@/schemaValidation/auth.schema';
+import { useUserStore } from '@/store/userStore';
 
 /**
  * Custom hook for authentication state and actions
@@ -61,6 +62,9 @@ export default function useAuth() {
     } catch (error) {
       console.error('Logout error:', error);
     }
+    // Clear user profile from store
+    useUserStore.getState().clearUserProfile();
+    
     // Call store logout to clear state and navigate
     storeLogout();
   };

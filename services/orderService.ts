@@ -2,7 +2,7 @@ import { TourDetailDataResType, TourResType } from "@/schemaValidation/tour.sche
 import api from "./axiosInstance"
 import { apiEndpoint } from "@/config/routes"
 import { FullTicketScheduleType } from "@/schemaValidation/ticket-schedule.schema"
-import { OrderRequestType } from "@/schemaValidation/order.schema";
+import { OrderDetailType, OrderRequestType } from "@/schemaValidation/order.schema";
 import { string } from "zod";
 import { PaymentRequestType } from "@/schemaValidation/payment.schema";
 
@@ -27,5 +27,32 @@ export const orderApiRequest = {
         } catch (err) {
             throw err;
         }
+    },
+    cancelPayment: async (paymentId: string) => {
+        try {
+            const response = await api.put(`${apiEndpoint.payment}/${paymentId}`, {});
+            return response;
+        } catch (err) {
+            throw err;
+        }
+    },
+    cancelPaymentByOrderId: async (orderId: string) => {
+        try {
+            const response = await api.put(`${apiEndpoint.order}/${orderId}`, "");
+            return response.data;
+        } catch (err) {
+            throw err;
+        }
+    },
+    getOrderDetail: async (orderId: string) => {
+        try {
+            const response = await api.get<OrderDetailType>(`${apiEndpoint.order}/${orderId}`)
+
+            return response.data
+        } catch (error: any) {
+            console.error('Order API error:', error.response?.data || error.message)
+            throw error
+        }
     }
+
 }

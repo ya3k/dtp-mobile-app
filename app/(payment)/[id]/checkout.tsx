@@ -6,7 +6,6 @@ import { formatPrice } from '@/libs/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { orderApiRequest } from '@/services/orderService';
 import { OrderRequestType } from '@/schemaValidation/order.schema';
-import useAuth from '@/hooks/useAuth';
 import * as Linking from 'expo-linking';
 import { PaymentRequestType } from '@/schemaValidation/payment.schema';
 import Constants from 'expo-constants';
@@ -51,13 +50,17 @@ export default function Checkout() {
 
         // Handle the return from payment gateway
         if (path?.includes('success')) {
+            const successOrderId = typeof queryParams?.orderId === 'string' 
+                ? queryParams.orderId 
+                : (Array.isArray(queryParams?.orderId) ? queryParams.orderId[0] : (orderId || 'unknown'));
+                
             router.replace({
-                pathname: "/payment/success",
-                params: { orderId: queryParams?.orderId }
+                pathname: "/(payment)/payment/success",
+                params: { orderId: successOrderId }
             });
         } else if (path?.includes('cancel')) {
             router.replace({
-                pathname: "/payment/cancel",
+                pathname: "/(payment)/payment/cancel",
                 params: { orderId: queryParams?.orderId }
             });
         }
@@ -109,8 +112,8 @@ export default function Checkout() {
             const scheme = Constants.manifest?.scheme || 'dtpmobile';
             
             // Use simple URL format for server compatibility
-            const returnUrl = `${scheme}://payment/success`;
-            const cancelUrl = `${scheme}://payment/cancel?orderId=${response.id}`;
+            const returnUrl = `${scheme}://payment/success?orderId=${response.id}`;
+            const cancelUrl = `${scheme}://payment/cancel`;
             
             console.log('Return URL:', returnUrl);
             console.log('Cancel URL:', cancelUrl);
@@ -146,7 +149,7 @@ export default function Checkout() {
             if (response && typeof response === 'string') {
                 // Chuyển đến WebView với URL thanh toán và ID đơn hàng
                 router.push({
-                    pathname: "/payment/webview",
+                    pathname: "/(payment)/payment/webview",
                     params: { 
                         url: response,
                         orderId: paymentRequest.bookingId // Truyền orderId sang WebView để theo dõi
@@ -155,7 +158,7 @@ export default function Checkout() {
             } else if (response && typeof response === 'object' && 'url' in response) {
                 // Trường hợp response trả về là object có thuộc tính url
                 router.push({
-                    pathname: "/payment/webview",
+                    pathname: "/(payment)/payment/webview",
                     params: { 
                         url: response.url as string,
                         orderId: paymentRequest.bookingId
@@ -278,7 +281,7 @@ export default function Checkout() {
 
                     <View className="p-4">
                         <View className="mb-4">
-                            <Text className="text-gray-700 mb-1">Họ và tên</Text>
+                            <Text className="text-gray-700 mb-1 font-medium">Họ và tên</Text>
                             <TextInput
                                 className="border border-gray-300 rounded-lg p-3 bg-white"
                                 value={form.name}
@@ -288,7 +291,7 @@ export default function Checkout() {
                         </View>
 
                         <View className="mb-4">
-                            <Text className="text-gray-700 mb-1">Email</Text>
+                            <Text className="text-gray-700 mb-1 font-medium">Email</Text>
                             <TextInput
                                 className="border border-gray-300 rounded-lg p-3 bg-white"
                                 value={form.email}
@@ -299,7 +302,7 @@ export default function Checkout() {
                         </View>
 
                         <View className="mb-4">
-                            <Text className="text-gray-700 mb-1">Số điện thoại</Text>
+                            <Text className="text-gray-700 mb-1 font-medium">Số điện thoại</Text>
                             <TextInput
                                 className="border border-gray-300 rounded-lg p-3 bg-white"
                                 value={form.phoneNumber}
@@ -310,7 +313,7 @@ export default function Checkout() {
                         </View>
 
                         <View className="mb-4">
-                            <Text className="text-gray-700 mb-1">Mã giảm giá (nếu có)</Text>
+                            <Text className="text-gray-700 mb-1 font-medium">Mã giảm giá (nếu có)</Text>
                             <TextInput
                                 className="border border-gray-300 rounded-lg p-3 bg-white"
                                 value={form.voucherCode}
@@ -322,7 +325,7 @@ export default function Checkout() {
                 </View>
 
                 <TouchableOpacity
-                    className="bg-orange-500 mx-4 mt-6 mb-8 p-4 rounded-xl"
+                    className="bg-core-500 mx-4 mt-6 mb-8 p-4 rounded-xl"
                     onPress={handleProceedToPayment}
                     disabled={isLoading}
                 >

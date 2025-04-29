@@ -7,47 +7,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCartStore } from '@/store/cartStore';
 
 export default function PaymentScreen() {
-  const { url } = useLocalSearchParams();
+  const { url, orderId } = useLocalSearchParams();
   const router = useRouter();
   const webViewRef = useRef<WebView>(null);
-  const [paymentComplete, setPaymentComplete] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'success' | 'cancelled'>('pending');
   const { clearCart } = useCartStore();
 
+  console.log(`Webview: ` + orderId);
+  
   // Handle hardware back button on Android
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (paymentComplete) {
-        goToSuccess();
-        return true;
-      }
-
       Alert.alert(
-        "Hủy thanh toán?",
-        "Bạn có chắc chắn muốn hủy thanh toán này không?",
+        "Rời khỏi trang thanh toán?",
+        "Bạn có chắc chắn muốn rời khỏi trang thanh toán này không?",
         [
           {
-            text: "Tiếp tục thanh toán",
-            style: "cancel",
-            onPress: () => {}
+            text: "Ở lại",
+            style: "cancel"
           },
           {
-            text: "Hủy thanh toán",
+            text: "Rời khỏi",
             style: "destructive",
-            onPress: () => {
-              // Extract the order ID if possible
-              let orderId = '';
-              if (typeof url === 'string') {
-                const match = url.match(/orderId=([^&]*)/);
-                if (match && match[1]) {
-                  orderId = match[1];
-                }
-              }
-              
-              router.replace({
-                pathname: '/(payment)/payment/cancel',
-                params: { orderId }
-              });
-            }
+            onPress: () => router.back()
           }
         ]
       );
@@ -55,34 +37,14 @@ export default function PaymentScreen() {
     });
 
     return () => backHandler.remove();
-  }, [paymentComplete, url]);
-
-  const goToSuccess = () => {
-    // Extract the order ID if possible
-    let orderId = '';
-    if (typeof url === 'string') {
-      const match = url.match(/orderId=([^&]*)/);
-      if (match && match[1]) {
-        orderId = match[1];
-      }
-    }
-    
-    // Clear cart after successful payment
-    clearCart();
-    
-    // Navigate to success screen
-    router.replace({
-      pathname: '/(payment)/payment/success',
-      params: { orderId }
-    });
-  };
+  }, []);
 
   const handleNavigationStateChange = (navState: any) => {
     const { url: currentUrl } = navState;
     if (!currentUrl) return;
 
     console.log('WebView navigating to:', currentUrl);
-    
+
     // Special Android debugging
     if (Platform.OS === 'android') {
       console.log('Android WebView navigation state change:', {
@@ -102,26 +64,34 @@ export default function PaymentScreen() {
       currentUrl.includes('vnp_ResponseCode=00') ||
       currentUrl.includes('status=true')
     ) {
-      // Mark payment as complete
-      setPaymentComplete(true);
+      // Log full PayOS success URL for debugging
+      console.log('PAYMENT SUCCESS DETECTED - FULL URL:', currentUrl);
       
-      // Extract orderId from URL if present
-      const parsed = Linking.parse(currentUrl);
-      const orderId = parsed.queryParams?.orderId || 
-                     currentUrl.match(/orderId=([^&]*)/)?.[1] || 
-                     '';
+      // Additional PayOS specific logging
+      if (currentUrl.includes('payos.vn')) {
+        console.log('PayOS Success Details:', {
+          fullUrl: currentUrl,
+          urlPath: currentUrl.split('?')[0],
+          queryParams: currentUrl.includes('?') ? currentUrl.split('?')[1] : 'none'
+        });
+        
+        // Try to parse any query parameters
+        try {
+          const urlObj = new URL(currentUrl);
+          const params = Object.fromEntries(urlObj.searchParams);
+          console.log('PayOS URL Query Parameters:', params);
+        } catch (err) {
+          console.error('Failed to parse PayOS URL:', err);
+        }
+      }
       
-      console.log('Success detected, orderId:', orderId);
+      // Just update payment status, don't navigate
+      setPaymentStatus('success');
+      console.log("clear cart")
+      clearCart(); // Clear the cart on successful payment
       
-      // Navigate to success page
-      router.replace({
-        pathname: '/(payment)/payment/success',
-        params: { orderId }
-      });
-    } 
-    // Check for cancellation or failure patterns
-    else if (
-      currentUrl.includes('cancel') || 
+    } else if (
+      currentUrl.includes('cancel') ||
       currentUrl.includes('error') ||
       currentUrl.includes('paymentStatus=CANCELLED') ||
       currentUrl.includes('paymentStatus=FAILED') ||
@@ -130,26 +100,17 @@ export default function PaymentScreen() {
       currentUrl.includes('status=CANCELLED') ||
       currentUrl.includes('cancel=true')
     ) {
-      // Extract orderId from URL if present
-      const parsed = Linking.parse(currentUrl);
-      const orderId = parsed.queryParams?.orderId || 
-                     currentUrl.match(/orderId=([^&]*)/)?.[1] || 
-                     '';
-      
-      console.log('Cancel/Error detected, orderId:', orderId);
-      
-      // Navigate to cancel page
-      router.replace({
-        pathname: '/(payment)/payment/cancel',
-        params: { orderId }
-      });
+      console.log('Payment cancelled or failed:', currentUrl);
+      setPaymentStatus('cancelled');
     }
   };
 
   // Custom JavaScript to inject for better payment gateway integration
   const injectedJavaScript = `
-    // Send message when payment might be complete
-    function checkPaymentCompletion() {
+    // Log things to console but don't change navigation
+    function checkPaymentStatus() {
+      console.log('Current WebView URL:', window.location.href);
+      
       if (
         window.location.href.includes('success') || 
         window.location.href.includes('return') ||
@@ -158,10 +119,7 @@ export default function PaymentScreen() {
         window.location.href.includes('status=true') ||
         document.body.textContent.includes('thanh toán thành công')
       ) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'PAYMENT_SUCCESS',
-          url: window.location.href
-        }));
+        console.log('Payment success detected in webview:', window.location.href);
       }
       else if (
         window.location.href.includes('cancel') || 
@@ -175,47 +133,15 @@ export default function PaymentScreen() {
         document.body.textContent.includes('thanh toán thất bại') ||
         document.body.textContent.includes('đã hủy')
       ) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'PAYMENT_CANCELLED',
-          url: window.location.href
-        }));
+        console.log('Payment cancelled or failed in webview:', window.location.href);
       }
     }
     
-    // Run check immediately and set an interval
-    checkPaymentCompletion();
-    setInterval(checkPaymentCompletion, 1000);
+    // Run check immediately and set interval
+    checkPaymentStatus();
+    setInterval(checkPaymentStatus, 1000);
     true;
   `;
-
-  // Handle messages from WebView
-  const handleMessage = (event: any) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      console.log('Message from WebView:', data);
-      
-      if (data.type === 'PAYMENT_SUCCESS') {
-        setPaymentComplete(true);
-        goToSuccess();
-      } else if (data.type === 'PAYMENT_CANCELLED') {
-        // Extract the order ID if possible
-        let orderId = '';
-        if (data.url) {
-          const match = data.url.match(/orderId=([^&]*)/);
-          if (match && match[1]) {
-            orderId = match[1];
-          }
-        }
-        
-        router.replace({
-          pathname: '/(payment)/payment/cancel',
-          params: { orderId }
-        });
-      }
-    } catch (error) {
-      console.error('Failed to parse WebView message:', error);
-    }
-  };
 
   if (!url || typeof url !== 'string') {
     return (
@@ -229,8 +155,8 @@ export default function PaymentScreen() {
         </View>
         <View className="flex-1 justify-center items-center">
           <Text>URL thanh toán không hợp lệ</Text>
-          <TouchableOpacity 
-            className="mt-4 bg-orange-500 px-6 py-3 rounded-lg"
+          <TouchableOpacity
+            className="mt-4 bg-core-400 px-6 py-3 rounded-lg"
             onPress={() => router.back()}
           >
             <Text className="text-white font-semibold">Quay lại</Text>
@@ -243,50 +169,70 @@ export default function PaymentScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="white" />
-      <View className="flex-row items-center px-4 py-2 border-b border-gray-200">
-        <TouchableOpacity 
+      <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-200">
+        <TouchableOpacity
           onPress={() => {
             Alert.alert(
-              "Hủy thanh toán?",
-              "Bạn có chắc chắn muốn hủy thanh toán này không?",
+              "Rời khỏi trang thanh toán?",
+              "Bạn có chắc chắn muốn rời khỏi trang thanh toán này không?",
               [
                 {
-                  text: "Tiếp tục thanh toán",
+                  text: "Ở lại",
                   style: "cancel"
                 },
                 {
-                  text: "Hủy thanh toán",
+                  text: "Rời khỏi",
                   style: "destructive",
-                  onPress: () => {
-                    // Extract the order ID if possible
-                    let orderId = '';
-                    if (typeof url === 'string') {
-                      const match = url.match(/orderId=([^&]*)/);
-                      if (match && match[1]) {
-                        orderId = match[1];
-                      }
-                    }
-                    
-                    router.replace({
-                      pathname: '/(payment)/payment/cancel',
-                      params: { orderId }
-                    });
-                  }
+                  onPress: () => router.back()
                 }
               ]
             );
-          }} 
+          }}
           className="p-2"
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text className="ml-2 text-lg font-medium">Thanh toán</Text>
+        <Text className="text-lg font-medium">Thanh toán</Text>
+        
+        {/* Thêm nút hiển thị theo trạng thái */}
+        {paymentStatus === 'success' && (
+          <TouchableOpacity 
+            onPress={() => router.replace({
+              pathname: '/(payment)/payment/success',
+              params: { orderId }
+            })}
+            className="bg-green-500 px-3 py-1 rounded-lg"
+          >
+            <Text className="text-white font-medium">Xem đơn hàng</Text>
+          </TouchableOpacity>
+        )}
+        
+        {paymentStatus === 'pending' && (
+          <View className="w-24" /> 
+        )}
       </View>
+      
+      {/* Status indicator */}
+      {paymentStatus === 'success' && (
+        <View className="px-4 py-2 bg-green-50 border-b border-green-200">
+          <Text className="text-green-700 font-medium">
+            Thanh toán đã được xác nhận thành công! Bạn có thể tiếp tục xem trang hiện tại hoặc xem thông tin đơn hàng.
+          </Text>
+        </View>
+      )}
+      
+      {paymentStatus === 'cancelled' && (
+        <View className="px-4 py-2 bg-red-50 border-b border-red-200">
+          <Text className="text-red-700 font-medium">
+            Thanh toán đã bị hủy hoặc thất bại. Bạn có thể thử lại sau.
+          </Text>
+        </View>
+      )}
+      
       <WebView
         ref={webViewRef}
         source={{ uri: url }}
         onNavigationStateChange={handleNavigationStateChange}
-        onMessage={handleMessage}
         injectedJavaScript={injectedJavaScript}
         startInLoadingState
         renderLoading={() => (
@@ -309,6 +255,34 @@ export default function PaymentScreen() {
         scrollEnabled={true}
         allowsFullscreenVideo={true}
       />
+      
+      {/* Bottom Action Bar */}
+      {paymentStatus !== 'pending' && (
+        <View className="p-4 border-t border-gray-200 bg-white">
+          <View className="flex-row justify-between">
+            {paymentStatus === 'success' && (
+              <TouchableOpacity
+                className="bg-core-400 py-3 rounded-xl flex-1"
+                onPress={() => router.replace({
+                  pathname: '/(payment)/payment/success',
+                  params: { orderId }
+                })}
+              >
+                <Text className="text-white font-bold text-lg text-center">Xem chi tiết đơn hàng</Text>
+              </TouchableOpacity>
+            )}
+            
+            {paymentStatus === 'cancelled' && (
+              <TouchableOpacity
+                className="bg-gray-500 py-3 rounded-xl flex-1"
+                onPress={() => router.back()}
+              >
+                <Text className="text-white font-bold text-lg text-center">Quay lại</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

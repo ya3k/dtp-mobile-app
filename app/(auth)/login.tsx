@@ -5,10 +5,12 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useAuth from '@/hooks/useAuth';
 import { loginSchema } from '@/schemaValidation/auth.schema';
+import { useUserStore } from '@/store/userStore';
 
 const LoginScreen = () => {
   const router = useRouter();
   const { login, waitForAuth } = useAuth();
+  const { fetchUserProfile } = useUserStore();
   
   // Form state
   const [userName, setUserName] = useState('');
@@ -55,6 +57,9 @@ const LoginScreen = () => {
       const isAuthenticated = await waitForAuth();
       
       if (isAuthenticated) {
+        // Fetch user profile after successful login
+        await fetchUserProfile();
+        
         // Navigate to home screen on success
         router.push('/(tabs)');
       } else {
