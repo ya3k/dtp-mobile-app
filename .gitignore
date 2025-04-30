@@ -2,7 +2,9 @@
 
 # dependencies
 node_modules/
-
+# cursor
+/cursor/
+.cursor
 # Expo
 .expo/
 dist/
