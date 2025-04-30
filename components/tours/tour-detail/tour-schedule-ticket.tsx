@@ -414,12 +414,15 @@ const TourScheduleTicket = ({
               </Text>
             </View>
             
+            {/* Button with debuggable text */}
             <TouchableOpacity
               style={[styles.confirmButton, !hasTicketsSelected() && styles.confirmButtonDisabled]}
               disabled={!hasTicketsSelected()}
               onPress={handleConfirm}
             >
-              <Text style={styles.confirmButtonText}>{mode === "cart" ? "Thêm vào giỏ hàng" : "Đặt ngay"}</Text>
+              <Text style={styles.confirmButtonText}>
+                {mode === "cart" ? "Thêm vào giỏ hàng" : "Đặt ngay"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -693,6 +696,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF8C00",
     borderRadius: 8,
     paddingVertical: 14,
+    paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
     width: '100%',
@@ -705,6 +709,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
+    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,

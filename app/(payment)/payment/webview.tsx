@@ -151,7 +151,7 @@ export default function PaymentScreen() {
           <TouchableOpacity onPress={() => router.back()} className="p-2">
             <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
-          <Text className="ml-2 text-lg font-medium">Thanh toán</Text>
+          <Text className="ml-2 text-lg font-bold">Thanh toán</Text>
         </View>
         <View className="flex-1 justify-center items-center">
           <Text>URL thanh toán không hợp lệ</Text>
@@ -169,7 +169,7 @@ export default function PaymentScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="white" />
-      <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-200">
+      <View className="flex-row items-center justify-between py-2 border-b border-gray-200">
         <TouchableOpacity
           onPress={() => {
             Alert.alert(
@@ -192,7 +192,7 @@ export default function PaymentScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text className="text-lg font-medium">Thanh toán</Text>
+        <Text className="text-sm font-medium">Thanh toán</Text>
         
         {/* Thêm nút hiển thị theo trạng thái */}
         {paymentStatus === 'success' && (
