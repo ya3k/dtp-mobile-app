@@ -1,5 +1,21 @@
 import { z } from 'zod';
 
+export enum TicketKind {
+  Adult = 0,
+  Child = 1,
+  PerGroupOfThree = 2,
+  PerGroupOfFive = 3,
+  PerGroupOfSeven = 4,
+  PerGroupOfTen = 5,
+}
+
+export enum OrderStatus {
+  SUBMITTED = 0,
+  AWAITING_PAYMENT = 1,
+  COMPLETED = 2,
+  CANCELLED = 3,
+  PAID = 4,
+}
 
 export const orderTicketRequestSchema = z.object({
   ticketTypeId: z.string(),
@@ -48,3 +64,26 @@ export const OrderDetailSchema = z.object({
 });
 
 export type OrderDetailType = z.infer<typeof OrderDetailSchema>;
+
+
+export const OrderTicketSchema = z.object({
+  code: z.string(),
+  ticketTypeId: z.string().uuid(),
+  quantity: z.number().int().min(1),
+  grossCost: z.number(),
+  ticketKind: z.number(), // 0 or 1
+});
+
+export const TourOrderSchema = z.object({
+  orderId: z.string().uuid(),
+  tourName: z.string(),
+  tourId: z.string().uuid(),
+  tourThumbnail: z.string().url(),
+  tourDate: z.string(),
+  orderTickets: z.array(OrderTicketSchema),
+  finalCost: z.number(),
+  canRating: z.boolean(),
+  status: z.number(), // could refine to enum if needed
+});
+
+export type OrderHistoryType = z.infer<typeof TourOrderSchema>;

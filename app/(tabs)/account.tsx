@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
+import React, { useRef } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Alert, Image, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useAuth from '@/hooks/useAuth';
@@ -11,33 +11,76 @@ const Profile = () => {
   const { userProfile } = useUserStore();
   const router = useRouter();
 
+  // Animation values
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+
   // Check if user is admin
   const isAdmin = role === 'Admin';
 
   // Handle logout with confirmation
   const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc muốn đăng xuất khỏi tài khoản?',
-      [
-        {
-          text: 'Hủy',
-          style: 'cancel',
-        },
-        {
-          text: 'Đăng xuất',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Lỗi', 'Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại sau.');
-            }
+    // Start animation
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0.8,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      // After animation completes, show the confirmation dialog
+      Alert.alert(
+        'Đăng xuất',
+        'Bạn có chắc muốn đăng xuất khỏi tài khoản?',
+        [
+          {
+            text: 'Hủy',
+            style: 'cancel',
           },
-          style: 'destructive',
-        },
-      ]
-    );
+          {
+            text: 'Đăng xuất',
+            onPress: async () => {
+              try {
+                // Start a fade out animation
+                Animated.timing(opacityAnim, {
+                  toValue: 0,
+                  duration: 300,
+                  useNativeDriver: true,
+                }).start(async () => {
+                  // When animation completes, logout
+                  await logout();
+                });
+              } catch (error) {
+                // Reset opacity in case of error
+                opacityAnim.setValue(1);
+                console.error('Logout error:', error);
+                Alert.alert('Lỗi', 'Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại sau.');
+              }
+            },
+            style: 'destructive',
+          },
+        ]
+      );
+    });
   };
 
   // Handle debug button press
@@ -50,10 +93,19 @@ const Profile = () => {
     );
   };
   const handleUserProfile = () => {
-    router.replace('/(profile)/profile');
+    router.push('/(profile)/profile');
   }
 
+  const handleWalletPush = () => {
+    router.push('/(profile)/wallet-view');
+  }
+  const handleOrderHisPush = () => {
+    router.push('/(profile)/my-booking/order-history');
+  }
 
+  const handleRviewPush = () => {
+    router.push('/(profile)/my-review/review-list');
+  }
 
 
   // If not authenticated, show login prompt
@@ -82,11 +134,10 @@ const Profile = () => {
         {/* User Info Card */}
         <View style={styles.profileHeader}>
           <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: 'https://ui-avatars.com/api/?name=User&background=15B6CB&color=fff' }}
-                style={styles.avatar}
-              />
+            <View className="w-20 h-20 rounded-full bg-core-500 justify-center items-center mr-3">
+              <Text className="text-3xl font-bold text-white">
+                {userProfile?.name ? userProfile.name.charAt(0) : userProfile?.name.charAt(0)}
+              </Text>
             </View>
             <View style={styles.userDetails}>
               <Text style={styles.userName}>{userProfile?.userName}</Text>
@@ -97,7 +148,6 @@ const Profile = () => {
 
         {/* Menu Options */}
         <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Tài khoản</Text>
 
           <TouchableOpacity style={styles.menuItem}>
             <Ionicons name="person-outline" size={24} color="#555" />
@@ -105,36 +155,41 @@ const Profile = () => {
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleWalletPush}>
             <Ionicons name="wallet-outline" size={24} color="#555" />
             <Text style={styles.menuItemText}>Ví của tôi</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleOrderHisPush}>
             <Ionicons name="cart-outline" size={24} color="#555" />
             <Text style={styles.menuItemText}>Đơn hàng của tôi</Text>
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={handleRviewPush}>
+            <Ionicons name="star-outline" size={24} color="#555" />
+            <Text style={styles.menuItemText}>Đánh giá</Text>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
         </View>
+        {isAdmin && (
+          <View style={styles.menuSection}>
+            <Text style={styles.sectionTitle}>Cài đặt</Text>
 
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Cài đặt</Text>
+            <TouchableOpacity style={styles.menuItem}>
+              <Ionicons name="globe-outline" size={24} color="#555" />
+              <Text style={styles.menuItemText}>Ngôn ngữ</Text>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="globe-outline" size={24} color="#555" />
-            <Text style={styles.menuItemText}>Ngôn ngữ</Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem}>
+              <Ionicons name="notifications-outline" size={24} color="#555" />
+              <Text style={styles.menuItemText}>Thông báo</Text>
+              <Ionicons name="chevron-forward" size={20} color="#999" />
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="notifications-outline" size={24} color="#555" />
-            <Text style={styles.menuItemText}>Thông báo</Text>
-            <Ionicons name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-
-          {/* Debug button only visible for admin users */}
-          {isAdmin && (
+            {/* Debug button only visible for admin users */}
             <TouchableOpacity
               style={styles.menuItem}
               onPress={handleDebugToken}
@@ -143,19 +198,27 @@ const Profile = () => {
               <Text style={styles.menuItemText}>Debug Token</Text>
               <Ionicons name="chevron-forward" size={20} color="#999" />
             </TouchableOpacity>
-          )}
-        </View>
+
+          </View>
+        )}
 
         {/* Log Out Button */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-          <Text style={styles.logoutText}>Đăng xuất</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.versionText}>Phiên bản 1.0.0</Text>
+        <Animated.View style={{
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
+          marginHorizontal: 15,
+          marginTop: 5,
+          marginBottom: 15,
+        }}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+            <Text style={styles.logoutText}>Đăng xuất</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -233,9 +296,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 15,
-    marginHorizontal: 15,
-    marginTop: 5,
-    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoutText: {
     marginLeft: 8,

@@ -191,7 +191,7 @@ const TourScheduleTicket = ({
     // Navigate to checkout
     setTimeout(() => {
       router.push({
-        pathname: "/(payment)/[id]/checkout",
+        pathname: "/(payment)/checkout/[id]",
         params: { id: ticketSelection.scheduleId }
       })
     }, 300)

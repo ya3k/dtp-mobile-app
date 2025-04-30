@@ -4,9 +4,12 @@ import { useRouter } from 'expo-router';
 import { TourResType } from '@/schemaValidation/tour.schema';
 import { tourApiRequest } from '@/services/tourService';
 import TourTable from '@/components/tours/tour-table';
+import SearchInput from '@/components/tours/search-input';
 
 export default function Index() {
   const [tours, setTours] = useState<TourResType[]>([]);
+  const [filteredTours, setFilteredTours] = useState<TourResType[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +25,7 @@ export default function Index() {
       const query = `?_t=${timestamp}`;
       const toursData = await tourApiRequest.getOdataTour(query);
       setTours(toursData);
+      setFilteredTours(toursData);
       setError(null);
     } catch (err) {
       setError('Failed to load tours. Please try again later.');
@@ -41,6 +45,27 @@ export default function Index() {
     fetchTours();
   }, [fetchTours]);
 
+  const handleSearch = useCallback((text: string) => {
+    setSearchQuery(text);
+    if (!text.trim()) {
+      setFilteredTours(tours);
+      return;
+    }
+    
+    const lowercasedQuery = text.toLowerCase();
+    const filtered = tours.filter(tour => 
+      tour.title.toLowerCase().includes(lowercasedQuery) || 
+      (tour.description && tour.description.toLowerCase().includes(lowercasedQuery)) ||
+      (tour.companyName && tour.companyName.toLowerCase().includes(lowercasedQuery))
+    );
+    setFilteredTours(filtered);
+  }, [tours]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setFilteredTours(tours);
+  }, [tours]);
+
   const handleTourPress = (tour: TourResType) => {
     // Navigate to tour details page
     router.push({
@@ -51,9 +76,11 @@ export default function Index() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <View className="py-4 px-8 bg-sky-600 rounded-b-2xl mb-2 shadow-md">
-        <Text className="text-xl font-bold text-white leading-relaxed" numberOfLines={1} ellipsizeMode="tail">Discover Tours</Text>
-      </View>
+      <SearchInput 
+        value={searchQuery}
+        onChangeText={handleSearch}
+        onClear={clearSearch}
+      />
       
       {error ? (
         <View className="flex-1 justify-center items-center p-4">
@@ -61,7 +88,7 @@ export default function Index() {
         </View>
       ) : (
         <TourTable 
-          tours={tours} 
+          tours={filteredTours} 
           isLoading={isLoading}
           onTourPress={handleTourPress}
           refreshControl={

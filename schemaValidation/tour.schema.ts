@@ -74,3 +74,18 @@ export type TourDetailResType = z.infer<typeof TourDetailSchema>;
 export type TourDetailDestinationResType = z.infer<typeof TourDetailDestinationSchema>;
 export type TourDetailDataResType = z.infer<typeof TourDetailDataSchema>;
 export type TicketTypeResType = z.infer<typeof TicketTypeSchema>;
+
+export const feedBackSchema = z.object({
+tourScheduleId: z.string(),
+description: z.string()
+})
+
+export const ratingSchema = z.object({
+  tourId: z.string(),
+  star: z.number(),
+  comment: z.string(),
+  images: z.array(z.string())
+})
+
+export type FeedBackType = z.infer<typeof feedBackSchema>;
+export type RatingType = z.infer<typeof ratingSchema>;

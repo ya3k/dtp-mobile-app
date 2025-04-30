@@ -61,7 +61,7 @@ const LoginScreen = () => {
         await fetchUserProfile();
         
         // Navigate to home screen on success
-        router.push('/(tabs)');
+        router.replace('/(tabs)');
       } else {
         setLoginError('Authentication failed. Please try again.');
       }

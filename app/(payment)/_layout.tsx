@@ -12,7 +12,7 @@ export default function PaymentLayout() {
       <Stack.Screen name="payment/success" options={{ gestureEnabled: true }} />
       <Stack.Screen name="payment/cancel" options={{ gestureEnabled: true }} />
       <Stack.Screen name="payment/webview" options={{ gestureEnabled: false }} />
-      <Stack.Screen name="[id]/checkout" options={{ gestureEnabled: true }} />
+      <Stack.Screen name="checkout/[id]" options={{ gestureEnabled: true }} />
     </Stack>
   );
 } 
