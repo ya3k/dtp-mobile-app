@@ -264,6 +264,7 @@ const TourScheduleTicket = ({
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
+        
         <View style={[styles.modalContainer, { height: modalHeight }]}>
           {/* Handle bar for better UX */}
           <View style={styles.handleBar} />
@@ -709,7 +710,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
   },
   loadingContainer: {
     flex: 1,

@@ -1,6 +1,6 @@
 import { ActivityIndicator, Button, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableHighlight, TouchableOpacity, View, Alert, useWindowDimensions, LogBox } from 'react-native'
 import React, { useEffect, useState, useMemo } from 'react'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useNavigation } from 'expo-router'
 import { tourApiRequest } from '@/services/tourService';
 
 import { TourDetailDataResType } from '@/schemaValidation/tour.schema';
@@ -22,7 +22,7 @@ LogBox.ignoreLogs([
 // Component tùy chỉnh bọc RenderHtml để xử lý trước các props
 const SafeRenderHtml = ({ html, ...props }: { html: string; contentWidth?: number; tagsStyles?: any; systemFonts?: string[]; renderersProps?: any }) => {
   const { width } = useWindowDimensions();
-  
+
   // Memoize các props để tránh re-render không cần thiết
   const memoizedProps = useMemo(() => ({
     contentWidth: props.contentWidth || width,
@@ -31,7 +31,7 @@ const SafeRenderHtml = ({ html, ...props }: { html: string; contentWidth?: numbe
     systemFonts: props.systemFonts,
     renderersProps: props.renderersProps,
   }), [html, width, props.tagsStyles, props.systemFonts, props.renderersProps, props.contentWidth]);
-  
+
   return <RenderHtml {...memoizedProps} />;
 };
 
@@ -43,12 +43,14 @@ const TourDetails = () => {
   const { isAuthenticated, accessToken } = useAuth();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  
+
   // Schedule modal state
   const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
   const [scheduleData, setScheduleData] = useState<FullTicketScheduleType | undefined>(undefined);
   const [isScheduleLoading, setIsScheduleLoading] = useState(false);
   const [bookingMode, setBookingMode] = useState<'cart' | 'book'>('cart');
+
+  const navigation = useNavigation();
 
   // Memoize render configurations to reduce rerenders
   const renderersProps = useMemo(() => ({
@@ -89,8 +91,8 @@ const TourDetails = () => {
         'Yêu cầu đăng nhập',
         'Vui lòng đăng nhập để thực hiện chức năng này',
         [
-          { 
-            text: 'Đăng nhập', 
+          {
+            text: 'Đăng nhập',
             onPress: () => router.push('/(auth)/login'),
             style: 'default'
           },
@@ -106,11 +108,11 @@ const TourDetails = () => {
   // Fetch schedule data
   const fetchScheduleData = async () => {
     if (!id) return;
-    
+
     try {
       setIsScheduleLoading(true);
       const response = await tourApiRequest.getTicketSchedule(id);
-      
+
       // Handle the API response structure
       if (response.success && response.data) {
         setScheduleData(response.data);
@@ -147,11 +149,11 @@ const TourDetails = () => {
     const fetchTourDetail = async () => {
       try {
         setIsLoading(true);
-        
+
         // Chỉ kiểm tra token một lần khi component mount
         // Không gọi checkTokenBeforeRequest nhiều lần
         const res = await tourApiRequest.getTourDetail(id);
-        
+
         if (isMounted) {
           setTourDetail(res);
           setError(null);
@@ -169,12 +171,18 @@ const TourDetails = () => {
     };
 
     fetchTourDetail();
-    
+
     // Cleanup function
     return () => {
       isMounted = false;
     };
   }, [id]); // Remove checkTokenBeforeRequest from dependencies
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -194,7 +202,13 @@ const TourDetails = () => {
 
   return (
     <View style={{ flex: 1 }}>
+      <View className="flex-row items-center">
+        <TouchableOpacity onPress={handleBack} className="p-2 mr-3">
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+      </View>
       <ScrollView style={styles.container}>
+
         <SafeAreaView>
           <GalleryThumbnailImg images={tourDetail.tour.imageUrls} />
           <View className="mt-2">
@@ -231,8 +245,8 @@ const TourDetails = () => {
               {/* Time line */}
               <View className="rounded-b-2xl mt-4 bg-teal-50">
                 <View className='m-6'>
-                  <TouchableOpacity 
-                    onPress={() => handleAuthAction(() => console.log('View itinerary details'))} 
+                  <TouchableOpacity
+                    onPress={() => handleAuthAction(() => console.log('View itinerary details'))}
                     className='mt-4 p-4 rounded-md border border-black flex flex-row items-center justify-center bg-gray-50'
                   >
                     <Ionicons name='map-outline' size={24} color={'black'} />
@@ -241,7 +255,7 @@ const TourDetails = () => {
 
                   <View className='mt-6'>
                     <Text className='font-extrabold text-xl'>Bao gồm</Text>
-                    <SafeRenderHtml 
+                    <SafeRenderHtml
                       html={tourDetail.tour.pickinfor}
                       tagsStyles={tagsStyles}
                       systemFonts={systemFonts}
@@ -250,7 +264,7 @@ const TourDetails = () => {
                   </View>
                 </View>
               </View>
-              
+
               {/* Authentication notice */}
               {!isAuthenticated && (
                 <View className="mx-4 my-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
@@ -261,7 +275,7 @@ const TourDetails = () => {
                   <Text className="text-blue-700 mb-3">
                     Đăng nhập để đặt tour, xem lịch trình chi tiết và nhận thông tin ưu đãi đặc biệt.
                   </Text>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     className="bg-blue-500 py-2 rounded-lg"
                     onPress={() => router.push('/(auth)/login')}
                   >
@@ -269,7 +283,7 @@ const TourDetails = () => {
                   </TouchableOpacity>
                 </View>
               )}
-              
+
               {/* about */}
               <View className='mt-3'>
                 <View className='mx-5'>
@@ -277,7 +291,7 @@ const TourDetails = () => {
                     <Text className='bg-teal-500 text-teal-500 font-bold mr-2'>|</Text>
                     <Text className="text-xl font-extrabold">Về dịch vụ này</Text>
                   </View>
-                  <SafeRenderHtml 
+                  <SafeRenderHtml
                     html={tourDetail.tour.about}
                     tagsStyles={tagsStyles}
                     systemFonts={systemFonts}
@@ -289,9 +303,9 @@ const TourDetails = () => {
           </View>
         </SafeAreaView>
       </ScrollView>
-      
+
       {/* Tour Schedule Modal */}
-      <TourScheduleTicket 
+      <TourScheduleTicket
         visible={scheduleModalVisible}
         onClose={() => setScheduleModalVisible(false)}
         tourId={id as string}
@@ -300,24 +314,24 @@ const TourDetails = () => {
         mode={bookingMode}
         tourTitle={tourDetail.tour.title}
       />
-      
+
       {/* Fixed bottom bar */}
       <View className="border-t border-gray-200 bg-white px-4 p-3 mx-2">
         {/* Price row with badge */}
         <View className="flex-row items-center justify-between mb-2">
           <Text className="font-extrabold text-xl text-gray-800">{formatPrice(tourDetail.tour.onlyFromCost)}</Text>
         </View>
-        
+
         {/* Buttons row */}
         <View className="flex-row gap-4">
-          <TouchableOpacity 
-            className="bg-amber-400 flex-1 py-4 rounded-2xl font-semibold" 
+          <TouchableOpacity
+            className="bg-amber-400 flex-1 py-4 rounded-2xl font-semibold"
             onPress={handleAddToCart}
           >
             <Text className="font-[800] text-center text-gray-800 text-lg">Thêm vào giỏ hàng</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            className="bg-orange-500 flex-1 py-4 rounded-2xl font-semibold" 
+          <TouchableOpacity
+            className="bg-orange-500 flex-1 py-4 rounded-2xl font-semibold"
             onPress={handleBookNow}
           >
             <Text className="font-[800] text-lg text-white text-center">Đặt ngay</Text>
