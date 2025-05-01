@@ -1,7 +1,8 @@
 import { ActivityIndicator, Button, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableHighlight, TouchableOpacity, View, Alert, useWindowDimensions, LogBox } from 'react-native'
 import React, { useEffect, useState, useMemo } from 'react'
-import { useLocalSearchParams, useNavigation } from 'expo-router'
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router'
 import { tourApiRequest } from '@/services/tourService';
+import { useTourStore } from '@/store/tourStore';
 
 import { TourDetailDataResType } from '@/schemaValidation/tour.schema';
 import GalleryThumbnailImg from '@/components/tours/tour-detail/gallery-thumnail-img';
@@ -10,7 +11,6 @@ import TourDescription from '@/components/tours/tour-detail/tour-description-mod
 import { formatPrice } from '@/libs/utils';
 import RenderHtml from 'react-native-render-html';
 import useAuth from '@/hooks/useAuth';
-import { useRouter } from 'expo-router';
 import TourScheduleTicket from '@/components/tours/tour-detail/tour-schedule-ticket';
 import { FullTicketScheduleType } from '@/schemaValidation/ticket-schedule.schema';
 
@@ -43,6 +43,7 @@ const TourDetails = () => {
   const { isAuthenticated, accessToken } = useAuth();
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const setTourInfo = useTourStore(state => state.setTourInfo);
 
   // Schedule modal state
   const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
@@ -132,7 +133,6 @@ const TourDetails = () => {
     handleAuthAction(() => {
       setBookingMode('cart');
       setScheduleModalVisible(true);
-      fetchScheduleData();
     });
   };
 
@@ -140,26 +140,51 @@ const TourDetails = () => {
     handleAuthAction(() => {
       setBookingMode('book');
       setScheduleModalVisible(true);
-      fetchScheduleData();
     });
   };
+
+  const handleDetailTimeline = () => {
+    if (tourDetail) {
+      // Store tour destinations in Zustand store
+      setTourInfo(
+        tourDetail.tour.title, 
+        tourDetail.tourDestinations,
+        tourDetail.tour.include,
+        tourDetail.tour.pickinfor,
+      );
+      // Navigate to timeline without params
+      router.push('/tours/timeline');
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
     const fetchTourDetail = async () => {
       try {
         setIsLoading(true);
-
-        // Chỉ kiểm tra token một lần khi component mount
-        // Không gọi checkTokenBeforeRequest nhiều lần
-        const res = await tourApiRequest.getTourDetail(id);
-
+        // Use the existing tourApiRequest service
+        const data = await tourApiRequest.getTourDetail(id as string);
+        
         if (isMounted) {
-          setTourDetail(res);
+          // Store tour info in Zustand store with include and pickinfor
+          setTourInfo(
+            data.tour.title, 
+            data.tourDestinations,
+            data.tour.include,
+            data.tour.pickinfor,
+           
+          );
+          
+          setTourDetail(data);
           setError(null);
+
+          // Fetch schedule data after delay
+          setTimeout(() => {
+            fetchScheduleData();
+          }, 2000);
         }
       } catch (err) {
-        console.error('Error fetching tour detail:', err);
+        console.error('Error fetching tour details:', err);
         if (isMounted) {
           setError('Failed to load tour details. Please try again later.');
         }
@@ -176,7 +201,7 @@ const TourDetails = () => {
     return () => {
       isMounted = false;
     };
-  }, [id]); // Remove checkTokenBeforeRequest from dependencies
+  }, [id, setTourInfo]);
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -188,6 +213,7 @@ const TourDetails = () => {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0ea5e9" />
+        <Text className="mt-2 text-gray-600">Đang tải thông tin tour...</Text>
       </SafeAreaView>
     );
   }
@@ -195,7 +221,14 @@ const TourDetails = () => {
   if (error || !tourDetail) {
     return (
       <SafeAreaView style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error || 'Tour not found'}</Text>
+        <Ionicons name="alert-circle-outline" size={48} color="red" />
+        <Text className="mt-2 text-red-500 text-center">{error || 'Tour not found'}</Text>
+        <TouchableOpacity 
+          className="mt-4 bg-sky-500 py-2 px-4 rounded-lg"
+          onPress={handleBack}
+        >
+          <Text className="text-white font-semibold">Quay lại</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -246,7 +279,7 @@ const TourDetails = () => {
               <View className="rounded-b-2xl mt-4 bg-teal-50">
                 <View className='m-6'>
                   <TouchableOpacity
-                    onPress={() => handleAuthAction(() => console.log('View itinerary details'))}
+                    onPress={handleDetailTimeline}
                     className='mt-4 p-4 rounded-md border border-black flex flex-row items-center justify-center bg-gray-50'
                   >
                     <Ionicons name='map-outline' size={24} color={'black'} />

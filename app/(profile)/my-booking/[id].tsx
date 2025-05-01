@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { OrderDetailType, OrderStatus, TicketKind } from '@/schemaValidation/order.schema';
 import { orderApiRequest } from '@/services/orderService';
+import { formatDateTime } from '@/libs/utils';
 
 // Function to format date string to DD-MM-YYYY
 const formatDate = (dateString: string): string => {
@@ -214,7 +215,7 @@ const OrderDetail = () => {
           </View>
           <View className="flex-row justify-between items-center mt-2">
             <Text className="text-gray-600">Ngày đặt: </Text>
-            <Text className="font-medium">{formatDate(orderDetail.orderDate)}</Text>
+            <Text className="font-medium">{formatDateTime(orderDetail.orderDate)}</Text>
           </View>
           <View className="flex-row justify-between items-center mt-2">
             <Text className="text-gray-600">Trạng thái: </Text>

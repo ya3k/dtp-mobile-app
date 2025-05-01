@@ -21,66 +21,41 @@ const Profile = () => {
   // Handle logout with confirmation
   const handleLogout = () => {
     // Start animation
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 0.95,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0.8,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      // After animation completes, show the confirmation dialog
-      Alert.alert(
-        'Đăng xuất',
-        'Bạn có chắc muốn đăng xuất khỏi tài khoản?',
-        [
-          {
-            text: 'Hủy',
-            style: 'cancel',
+
+    // After animation completes, show the confirmation dialog
+    Alert.alert(
+      'Đăng xuất',
+      'Bạn có chắc muốn đăng xuất khỏi tài khoản?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Đăng xuất',
+          onPress: async () => {
+            try {
+              // Start a fade out animation
+              Animated.timing(opacityAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+              }).start(async () => {
+                // When animation completes, logout
+                await logout();
+              });
+            } catch (error) {
+              // Reset opacity in case of error
+              opacityAnim.setValue(1);
+              console.error('Logout error:', error);
+              Alert.alert('Lỗi', 'Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại sau.');
+            }
           },
-          {
-            text: 'Đăng xuất',
-            onPress: async () => {
-              try {
-                // Start a fade out animation
-                Animated.timing(opacityAnim, {
-                  toValue: 0,
-                  duration: 300,
-                  useNativeDriver: true,
-                }).start(async () => {
-                  // When animation completes, logout
-                  await logout();
-                });
-              } catch (error) {
-                // Reset opacity in case of error
-                opacityAnim.setValue(1);
-                console.error('Logout error:', error);
-                Alert.alert('Lỗi', 'Đã xảy ra lỗi khi đăng xuất. Vui lòng thử lại sau.');
-              }
-            },
-            style: 'destructive',
-          },
-        ]
-      );
-    });
+          style: 'destructive',
+        },
+      ]
+    );
+
   };
 
   // Handle debug button press
@@ -203,22 +178,15 @@ const Profile = () => {
         )}
 
         {/* Log Out Button */}
-        <Animated.View style={{
-          transform: [{ scale: scaleAnim }],
-          opacity: opacityAnim,
-          marginHorizontal: 15,
-          marginTop: 5,
-          marginBottom: 15,
-        }}>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
-            <Text style={styles.logoutText}>Đăng xuất</Text>
-          </TouchableOpacity>
-        </Animated.View>
+
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
+          <Text style={styles.logoutText}>Đăng xuất</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

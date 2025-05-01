@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useAuth from '@/hooks/useAuth';
 import { loginSchema } from '@/schemaValidation/auth.schema';
 import { useUserStore } from '@/store/userStore';
 
 const LoginScreen = () => {
+  const URLFE = process.env.EXPO_FE_URL;
   const router = useRouter();
+  const navigation = useNavigation();
   const { login, waitForAuth } = useAuth();
   const { fetchUserProfile } = useUserStore();
-  
   // Form state
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
-  
+
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -38,44 +39,72 @@ const LoginScreen = () => {
   // Handle form submission
   const handleLogin = async () => {
     setLoginError(null);
-    
+
     // Validate all fields
     const isUserNameValid = validateField('userName', userName);
     const isPasswordValid = validateField('password', password);
-    
+
     if (!isUserNameValid || !isPasswordValid) {
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       // Login first
       await login({ userName, password });
-      
+
       // Wait for auth state to be fully applied
       const isAuthenticated = await waitForAuth();
-      
+
       if (isAuthenticated) {
         // Fetch user profile after successful login
         await fetchUserProfile();
-        
+
         // Navigate to home screen on success
-        router.replace('/(tabs)');
+        if (navigation.canGoBack()) {
+          navigation.goBack()
+        } else {
+          router.replace('/(tabs)');
+        }
       } else {
         setLoginError('Authentication failed. Please try again.');
       }
     } catch (error: any) {
-      const errorMessage = 
-        error.response?.data?.message || 
-        error.message || 
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
         'Đăng nhập thất bại. Vui lòng thử lại.';
-      
+
       setLoginError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleRegister = () => {
+    const registerURL = `${process.env.EXPO_PUBLIC_FE_URL}/register`;
+    // Navigate to the WebView with the external URL
+    router.push({
+      pathname: '/(auth)/external-webview',
+      params: {
+        url: registerURL,
+        title: 'Đăng Ký'
+      }
+    });
+  }
+
+  const forgotPassword = () => {
+    const forgotPW = `${process.env.EXPO_PUBLIC_FE_URL}/forgot-password`;
+    // Navigate to the WebView with the external URL
+    router.push({
+      pathname: '/(auth)/external-webview',
+      params: {
+        url: forgotPW,
+        title: 'Quên mật khẩu'
+      }
+    });
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -88,14 +117,14 @@ const LoginScreen = () => {
             <Text style={styles.title}>Đăng Nhập</Text>
             <Text style={styles.subtitle}>Đăng nhập để tiếp tục</Text>
           </View>
-          
+
           {/* Error message */}
           {loginError && (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{loginError}</Text>
             </View>
           )}
-          
+
           <View style={styles.form}>
             {/* Username field */}
             <View style={styles.inputContainer}>
@@ -115,7 +144,7 @@ const LoginScreen = () => {
               </View>
               {errors.userName && <Text style={styles.errorText}>{errors.userName}</Text>}
             </View>
-            
+
             {/* Password field */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Mật khẩu</Text>
@@ -131,25 +160,25 @@ const LoginScreen = () => {
                     validateField('password', text);
                   }}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
                 >
-                  <Ionicons 
-                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#777" 
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={20}
+                    color="#777"
                   />
                 </TouchableOpacity>
               </View>
               {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
             </View>
-            
-            <TouchableOpacity style={styles.forgotPassword}>
+
+            <TouchableOpacity style={styles.forgotPassword} onPress={forgotPassword}>
               <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
@@ -160,10 +189,10 @@ const LoginScreen = () => {
                 <Text style={styles.loginButtonText}>Đăng Nhập</Text>
               )}
             </TouchableOpacity>
-            
+
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>Chưa có tài khoản? </Text>
-              <TouchableOpacity onPress={() => router.push('/')}>
+              <TouchableOpacity onPress={handleRegister}>
                 <Text style={styles.registerLink}>Đăng ký</Text>
               </TouchableOpacity>
             </View>

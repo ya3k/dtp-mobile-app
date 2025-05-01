@@ -1,18 +1,19 @@
 import { View, Text, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Alert } from "react-native"
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import type { FullTicketScheduleType } from "@/schemaValidation/ticket-schedule.schema"
 import { formatPrice } from "@/libs/utils"
 import { AntDesign, Feather } from "@expo/vector-icons"
 import { useCartStore, CartItem } from "@/store/cartStore"
 import { TicketKind } from "@/types/ticketKind"
 import { useRouter } from "expo-router"
+import CalendarModal from "./calendar-modal"
 
 const getTicketKindLabel = (kind: TicketKind): string => {
   switch (kind) {
     case TicketKind.Adult:
       return "Người lớn"
     case TicketKind.Child:
-      return "Trẻ em(<5 tuổi)"
+      return "Trẻ em"
     case TicketKind.PerGroupOfThree:
       return "Nhóm 3 người"
     case TicketKind.PerGroupOfFive:
@@ -64,6 +65,7 @@ const TourScheduleTicket = ({
     day: "",
   })
   const [selectedDateRange, setSelectedDateRange] = useState<string>("")
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false)
   const { addItem, setDirectCheckoutItem } = useCartStore()
   const router = useRouter()
 
@@ -86,7 +88,7 @@ const TourScheduleTicket = ({
       if (scheduleData && scheduleData.length >= 2) {
         // Sort schedule data by date
         const sortedData = [...scheduleData].sort((a, b) => new Date(a.day).getTime() - new Date(b.day).getTime())
-        
+
         const firstDate = new Date(sortedData[0].day)
         const lastDate = new Date(sortedData[sortedData.length - 1].day)
 
@@ -159,10 +161,10 @@ const TourScheduleTicket = ({
       tickets: ticketSelection.tickets,
       totalPrice: getTotalPrice()
     }
-    
+
     // Add to cart
     addItem(cartItem)
-    
+
     // Show success message
     Alert.alert(
       'Thành công',
@@ -170,7 +172,7 @@ const TourScheduleTicket = ({
       [{ text: 'OK', onPress: () => onClose() }]
     )
   }
-  
+
   const handleOrderNow = () => {
     // Create direct checkout item
     const directItem: CartItem = {
@@ -181,13 +183,13 @@ const TourScheduleTicket = ({
       tickets: ticketSelection.tickets,
       totalPrice: getTotalPrice()
     }
-    
+
     // Set direct checkout item in store
     setDirectCheckoutItem(directItem)
-    
+
     // Close modal first to prevent UI flickering
     onClose()
-    
+
     // Navigate to checkout
     setTimeout(() => {
       router.push({
@@ -203,7 +205,7 @@ const TourScheduleTicket = ({
       Alert.alert('Lỗi', 'Vui lòng chọn ít nhất một vé')
       return
     }
-    
+
     // Call appropriate handler based on mode
     if (mode === 'cart') {
       handleAddToCart()
@@ -249,6 +251,22 @@ const TourScheduleTicket = ({
     )
   }
 
+  // Check if there are any available days
+  const hasAvailableDays = (): boolean => {
+    if (!scheduleData || scheduleData.length === 0) return false
+
+    // Check if there's at least one day with available tickets
+    return scheduleData.some(daySchedule => {
+      const available = daySchedule.ticketSchedules.some(ticket => ticket.availableTicket > 0)
+      return available
+    })
+  }
+
+  // Function to open/close calendar modal
+  const toggleCalendarModal = () => {
+    setCalendarModalVisible(!calendarModalVisible)
+  }
+
   if (isLoading) {
     return (
       <Modal visible={visible} transparent animationType="slide">
@@ -264,7 +282,7 @@ const TourScheduleTicket = ({
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
-        
+
         <View style={[styles.modalContainer, { height: modalHeight }]}>
           {/* Handle bar for better UX */}
           <View style={styles.handleBar} />
@@ -289,77 +307,77 @@ const TourScheduleTicket = ({
             <View style={styles.tourInfoSection}>
               <View>
                 <Text style={styles.tourTitle}>{tourTitle}</Text>
-                <Text style={styles.tourSubtitle}>Huỷ miễn phí 24 giờ · Xác nhận trong 24 giờ</Text>
+                <Text style={styles.tourSubtitle}>Huỷ miễn phí 24 giờ</Text>
               </View>
-              <TouchableOpacity style={styles.detailsButton}>
-                <Text style={styles.detailsButtonText}>Chi tiết</Text>
-              </TouchableOpacity>
+
             </View>
 
             {/* Date Selection Section */}
-            {scheduleData && scheduleData.length > 0 && (
+            {scheduleData && scheduleData.length > 0 ? (
               <View style={styles.dateSection}>
                 <Text style={styles.sectionTitle}>Xin chọn ngày đi tour</Text>
 
                 {/* Date range display */}
-                <TouchableOpacity style={styles.dateRangeButton}>
-                  <Text style={styles.dateRangeLabel}>Xem trang thời điểm vụ</Text>
+                <TouchableOpacity style={styles.dateRangeButton} onPress={toggleCalendarModal}>
+                  <Text style={styles.dateRangeLabel}>Xem trạng thái dịch vụ</Text>
                   <View style={styles.dateRangeValue}>
                     <Text>{selectedDateRange}</Text>
                     <AntDesign name="right" size={16} color="#333" style={{ marginLeft: 4 }} />
                   </View>
                 </TouchableOpacity>
 
-                {/* Horizontal date picker */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.datePickerScroll}
-                  contentContainerStyle={styles.datePickerContent}
-                >
-                  {getSortedScheduleData().map((daySchedule) => {
-                    const availability = getAvailabilityStatus(daySchedule.day)
-                    const isSelected = selectedDay === daySchedule.day
+                {hasAvailableDays() ? (
+                  <>
+                    {/* Horizontal date picker */}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.datePickerScroll}
+                      contentContainerStyle={styles.datePickerContent}
+                    >
+                      {getSortedScheduleData().map((daySchedule) => {
+                        const availability = getAvailabilityStatus(daySchedule.day)
+                        const isSelected = selectedDay === daySchedule.day
 
-                    // Skip unavailable dates
-                    if (availability === "unavailable") return null
+                        // Skip unavailable dates
+                        if (availability === "unavailable") return null
 
-                    return (
-                      <TouchableOpacity
-                        key={daySchedule.day}
-                        style={[styles.dateButton, isSelected && styles.dateButtonSelected]}
-                        onPress={() => handleDaySelect(daySchedule.day)}
-                      >
-                        <Text style={[styles.dateButtonText, isSelected && styles.dateButtonTextSelected]}>
-                          {formatDateNumber(daySchedule.day)}
-                        </Text>
+                        return (
+                          <TouchableOpacity
+                            key={daySchedule.day}
+                            style={[styles.dateButton, isSelected && styles.dateButtonSelected]}
+                            onPress={() => handleDaySelect(daySchedule.day)}
+                          >
+                            <Text style={[styles.dateButtonText, isSelected && styles.dateButtonTextSelected]}>
+                              {formatDateNumber(daySchedule.day)}
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </ScrollView>
 
-                        {/* Availability indicator dot */}
-                        <View style={styles.indicatorContainer}>
-                          <View
-                            style={[
-                              styles.availabilityDot,
-                              availability === "high"
-                                ? styles.highAvailability
-                                : availability === "medium"
-                                  ? styles.mediumAvailability
-                                  : styles.lowAvailability,
-                            ]}
-                          />
-                        </View>
-                      </TouchableOpacity>
-                    )
-                  })}
-                </ScrollView>
-
-                {/* Availability legend */}
-                <View style={styles.legendContainer}>
-                  <View style={[styles.availabilityDot, styles.highAvailability]} />
-                  <Text style={styles.legendText}>Sẵn sàng khởi hành</Text>
-                  <TouchableOpacity style={styles.infoButton}>
-                    <Feather name="info" size={14} color="gray" />
-                  </TouchableOpacity>
-                </View>
+                    {/* Availability legend */}
+                    <View style={styles.legendContainer}>
+                      <Text style={styles.legendText}>Chọn ngày bạn muốn đi</Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.noAvailabilityContainer}>
+                    <Feather name="calendar" size={48} color="#999999" />
+                    <Text style={styles.noAvailabilityText}>Không có ngày khả dụng</Text>
+                    <Text style={styles.noAvailabilitySubtext}>
+                      Hiện tại không có lịch khởi hành nào cho tour này. Vui lòng quay lại sau hoặc liên hệ với chúng tôi để biết thêm thông tin.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.noAvailabilityContainer}>
+                <Feather name="calendar" size={48} color="#999999" />
+                <Text style={styles.noAvailabilityText}>Không có lịch trình</Text>
+                <Text style={styles.noAvailabilitySubtext}>
+                  Hiện tại không có lịch trình nào cho tour này. Vui lòng quay lại sau hoặc liên hệ với chúng tôi để biết thêm thông tin.
+                </Text>
               </View>
             )}
 
@@ -414,19 +432,30 @@ const TourScheduleTicket = ({
                 {getTotalPrice() > 0 ? `${formatPrice(getTotalPrice())}` : "0 đ"}
               </Text>
             </View>
-            
+
             {/* Button with debuggable text */}
             <TouchableOpacity
-              style={[styles.confirmButton, !hasTicketsSelected() && styles.confirmButtonDisabled]}
-              disabled={!hasTicketsSelected()}
+              style={[styles.confirmButton,
+              (!hasTicketsSelected() || !hasAvailableDays()) && styles.confirmButtonDisabled
+              ]}
+              disabled={!hasTicketsSelected() || !hasAvailableDays()}
               onPress={handleConfirm}
             >
-              <Text style={styles.confirmButtonText}>
+              <Text style={[styles.confirmButtonText, { width: '100%' }]}>
                 {mode === "cart" ? "Thêm vào giỏ hàng" : "Đặt ngay"}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Replace the old calendar modal with new CalendarModal component */}
+        <CalendarModal
+          visible={calendarModalVisible}
+          onClose={toggleCalendarModal}
+          scheduleData={scheduleData}
+          selectedDay={selectedDay}
+          onDaySelect={handleDaySelect}
+        />
       </View>
     </Modal>
   )
@@ -491,7 +520,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#333",
     marginBottom: 4,
-    maxWidth: '80%', // Prevent too long titles from overflowing
+    maxWidth: 'auto', // Prevent too long titles from overflowing
   },
   tourSubtitle: {
     fontSize: 13,
@@ -551,8 +580,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dateButtonSelected: {
-    backgroundColor: "#FFF3E0",
-    borderColor: "#FF8C00",
+    backgroundColor: "hsl(184.62, 69.15%, 90%)",
+    borderColor: "hsl(184.62, 69.15%, 30%)",
   },
   dateButtonText: {
     fontSize: 16,
@@ -561,7 +590,7 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   dateButtonTextSelected: {
-    color: "#FF8C00",
+    color: "black",
   },
   indicatorContainer: {
     flexDirection: "row",
@@ -584,9 +613,10 @@ const styles = StyleSheet.create({
   },
   legendContainer: {
     flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-    marginBottom: 16,
+    justifyContent: "space-around",
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
   },
   legendText: {
     fontSize: 14,
@@ -598,9 +628,28 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
     padding: 4,
   },
+  noAvailabilityContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  noAvailabilityText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noAvailabilitySubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   ticketSection: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 4,
     paddingBottom: 16,
   },
   ticketItem: {
@@ -694,13 +743,14 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   confirmButton: {
-    backgroundColor: "#FF8C00",
+    backgroundColor: "hsl(184.62, 69.15%, 36.86%)",
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
     width: '100%',
+    minWidth: 200,
   },
   confirmButtonDisabled: {
     backgroundColor: "#E0E0E0",
@@ -710,7 +760,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",
+    includeFontPadding: false,
     letterSpacing: 0.2,
+    flexShrink: 1,
   },
   loadingContainer: {
     flex: 1,
