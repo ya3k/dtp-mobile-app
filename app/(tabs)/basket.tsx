@@ -12,7 +12,7 @@ const getTicketKindLabel = (kind: TicketKind): string => {
     case TicketKind.Adult:
       return "Người lớn"
     case TicketKind.Child:
-      return "Trẻ em(<5 tuổi)"
+      return "Trẻ em"
     case TicketKind.PerGroupOfThree:
       return "Nhóm 3 người"
     case TicketKind.PerGroupOfFive:
@@ -128,7 +128,7 @@ const Basket = () => {
       setDirectCheckoutItem(item)
       // Navigate to the checkout page with the ID parameter
       router.push({
-        pathname: "/(payment)/[id]/checkout",
+        pathname: "/(payment)/checkout/[id]",
         params: { id: item.scheduleId }
       })
     }, 300)

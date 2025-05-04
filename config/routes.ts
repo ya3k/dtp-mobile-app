@@ -31,6 +31,9 @@ export const apiEndpoint = {
     withdrawWithOtp: "/api/wallet/withdraw",
     deposit: "/api/wallet/deposit",
 
+    //voucher
+    odataVoucher: `/odata/Voucher/Own()`,
+    oVoucher: `/odata/voucher`,
     //upload
     upload: "/api/media"
   };

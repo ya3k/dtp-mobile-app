@@ -5,10 +5,24 @@ import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/libs/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { orderApiRequest } from '@/services/orderService';
-import { OrderRequestType } from '@/schemaValidation/order.schema';
+import { OrderRequestType, orderRequestSchema } from '@/schemaValidation/order.schema';
 import * as Linking from 'expo-linking';
 import { PaymentRequestType } from '@/schemaValidation/payment.schema';
 import Constants from 'expo-constants';
+import { z } from 'zod';
+import VoucherModal from '@/app/components/VoucherModal';
+import { VoucherResType } from '@/schemaValidation/voucher.schema';
+
+// Form validation schema based on orderRequestSchema
+const checkoutFormSchema = z.object({
+    name: z.string().min(1, { message: "Họ và tên không được để trống" }),
+    email: z.string().email({ message: "Email không hợp lệ" }),
+    phoneNumber: z.string().min(1, { message: "Số điện thoại không được để trống" })
+        .regex(/^(\+84|84|0)[3|5|7|8|9]+[0-9]{8}$/, { message: "Số điện thoại không hợp lệ" }),
+    voucherCode: z.string().optional(),
+});
+
+type CheckoutFormType = z.infer<typeof checkoutFormSchema>;
 
 export default function Checkout() {
     const { id } = useLocalSearchParams();
@@ -17,11 +31,15 @@ export default function Checkout() {
     const { directCheckoutItem, setDirectCheckoutItem } = useCartStore();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [formErrors, setFormErrors] = useState<Partial<Record<keyof CheckoutFormType, string>>>({});
     const [success, setSuccess] = useState(false);
     const [orderId, setOrderId] = useState<string | null>(null);
+    const [voucherModalVisible, setVoucherModalVisible] = useState(false);
+    const [selectedVoucher, setSelectedVoucher] = useState<VoucherResType | null>(null);
+    const [discountAmount, setDiscountAmount] = useState(0);
 
     // Form state
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<CheckoutFormType>({
         name: '',
         email: '',
         phoneNumber: '',
@@ -41,6 +59,23 @@ export default function Checkout() {
             subscription.remove();
         };
     }, [id, directCheckoutItem]);
+
+    useEffect(() => {
+        if (selectedVoucher) {
+            // Update form voucher code
+            setForm(prev => ({ ...prev, voucherCode: selectedVoucher.code }));
+            
+            // Calculate discount amount
+            if (directCheckoutItem) {
+                const discountValue = directCheckoutItem.totalPrice * selectedVoucher.percent;
+                const finalDiscount = Math.min(discountValue, selectedVoucher.maxDiscountAmount);
+                setDiscountAmount(finalDiscount);
+            }
+        } else {
+            setForm(prev => ({ ...prev, voucherCode: '' }));
+            setDiscountAmount(0);
+        }
+    }, [selectedVoucher, directCheckoutItem]);
 
     const handleDeepLink = (event: { url: string }) => {
         // Extract the path from the URL
@@ -66,19 +101,43 @@ export default function Checkout() {
         }
     };
 
-    const handleInputChange = (field: string, value: string) => {
+    const handleInputChange = (field: keyof CheckoutFormType, value: string) => {
         setForm(prev => ({ ...prev, [field]: value }));
+        // Clear the error for this field when the user types
+        if (formErrors[field]) {
+            setFormErrors(prev => ({ ...prev, [field]: undefined }));
+        }
+    };
+
+    const validateForm = (): boolean => {
+        try {
+            checkoutFormSchema.parse(form);
+            setFormErrors({});
+            return true;
+        } catch (err) {
+            if (err instanceof z.ZodError) {
+                const errors: Partial<Record<keyof CheckoutFormType, string>> = {};
+                err.errors.forEach((error) => {
+                    if (error.path[0]) {
+                        errors[error.path[0] as keyof CheckoutFormType] = error.message;
+                    }
+                });
+                setFormErrors(errors);
+            }
+            return false;
+        }
     };
 
     const handleSubmit = async () => {
         try {
-            setIsLoading(true);
             setError('');
-
-            // Validate form
-            if (!form.name || !form.email || !form.phoneNumber) {
-                throw new Error('Vui lòng điền đầy đủ thông tin');
+            
+            // Validate form with Zod
+            if (!validateForm()) {
+                return;
             }
+
+            setIsLoading(true);
 
             if (!directCheckoutItem) {
                 throw new Error('Không tìm thấy thông tin đặt hàng');
@@ -99,84 +158,94 @@ export default function Checkout() {
                     }))
             };
 
+            // Validate order request against schema
+            try {
+                orderRequestSchema.parse(orderRequest);
+            } catch (zodError) {
+                if (zodError instanceof z.ZodError) {
+                    throw new Error('Dữ liệu đặt hàng không hợp lệ: ' + zodError.errors.map(e => e.message).join(', '));
+                }
+                throw zodError;
+            }
+
             // Submit order
             const response = await orderApiRequest.postOrder(orderRequest);
             setOrderId(response.id);
             console.log(`Order created with ID: ${response.id}`);
 
-            // Handle successful order
+            // Handle successful order - chuyển ngay sang trạng thái "Chuyển đến trang thanh toán"
+            // không tắt isLoading để tránh hiển thị lại "Đang xử lý đơn hàng"
             setSuccess(true);
-
-            // Generate success and cancel URLs for payment
-            // Lấy scheme từ app.json hoặc sử dụng giá trị mặc định là 'dtpmobile'
-            const scheme = Constants.manifest?.scheme || 'dtpmobile';
             
-            // Use simple URL format for server compatibility
+            // Lưu dữ liệu tạm thời để dùng khi direct checkout item bị xóa
+            const savedScheduleId = directCheckoutItem.scheduleId;
+            
+            // Generate success and cancel URLs for payment
+            const scheme = Constants.manifest?.scheme || 'dtpmobile';
             const returnUrl = `${scheme}://payment/success?orderId=${response.id}`;
             const cancelUrl = `${scheme}://payment/cancel`;
             
             console.log('Return URL:', returnUrl);
             console.log('Cancel URL:', cancelUrl);
 
-            // Proceed to payment
-            setTimeout(() => {
-                // Prepare payment request
-                const paymentRequest: PaymentRequestType = {
-                    bookingId: response.id,
-                    responseUrl: {
-                        returnUrl,
-                        cancelUrl
+            // Chuẩn bị payment request
+            const paymentRequest: PaymentRequestType = {
+                bookingId: response.id,
+                responseUrl: {
+                    returnUrl,
+                    cancelUrl
+                }
+            };
+
+            // Giữ nguyên trạng thái success và không set isLoading lại
+            // để tránh hiển thị lại "Đang xử lý đơn hàng"
+            setTimeout(async () => {
+                try {
+                    // Gọi API payment và xử lý kết quả
+                    const response = await orderApiRequest.payment(paymentRequest);
+
+                    if (response && typeof response === 'string') {
+                        router.replace({
+                            pathname: "/(payment)/payment/webview",
+                            params: { 
+                                url: response,
+                                orderId: paymentRequest.bookingId
+                            }
+                        });
+                        // Chỉ xóa dữ liệu sau khi đã điều hướng thành công
+                        setTimeout(() => {
+                            setDirectCheckoutItem(null);
+                        }, 500);
+                    } else if (response && typeof response === 'object' && 'url' in response) {
+                        router.replace({
+                            pathname: "/(payment)/payment/webview",
+                            params: { 
+                                url: response.url as string,
+                                orderId: paymentRequest.bookingId
+                            }
+                        });
+                        setTimeout(() => {
+                            setDirectCheckoutItem(null);
+                        }, 500);
+                    } else {
+                        throw new Error('Không nhận được đường dẫn thanh toán');
                     }
-                };
-
-                // Call payment API
-                processPayment(paymentRequest);
-
-                // Clear direct checkout item after successful order
-                setDirectCheckoutItem(null);
-            }, 2000);
+                } catch (err) {
+                    console.error('Error during payment processing:', err);
+                    setIsLoading(false);
+                    setSuccess(false);
+                    Alert.alert(
+                        'Lỗi thanh toán',
+                        'Không thể tiến hành thanh toán. Vui lòng thử lại sau.',
+                        [{ text: 'OK' }]
+                    );
+                }
+            }, 1500);
         } catch (err: any) {
             setError(err.message || 'Đã xảy ra lỗi khi thanh toán');
-        } finally {
             setIsLoading(false);
         }
     };
-
-    const processPayment = async (paymentRequest: PaymentRequestType) => {
-        try {
-            const response = await orderApiRequest.payment(paymentRequest);
-
-            if (response && typeof response === 'string') {
-                // Chuyển đến WebView với URL thanh toán và ID đơn hàng
-                router.push({
-                    pathname: "/(payment)/payment/webview",
-                    params: { 
-                        url: response,
-                        orderId: paymentRequest.bookingId // Truyền orderId sang WebView để theo dõi
-                    }
-                });
-            } else if (response && typeof response === 'object' && 'url' in response) {
-                // Trường hợp response trả về là object có thuộc tính url
-                router.push({
-                    pathname: "/(payment)/payment/webview",
-                    params: { 
-                        url: response.url as string,
-                        orderId: paymentRequest.bookingId
-                    }
-                });
-            } else {
-                throw new Error('Không nhận được đường dẫn thanh toán');
-            }
-        } catch (err: any) {
-            console.error('Payment error:', err);
-            Alert.alert(
-                'Lỗi thanh toán',
-                'Không thể tiến hành thanh toán. Vui lòng thử lại sau.',
-                [{ text: 'OK' }]
-            );
-        }
-    };
-
 
     const handleProceedToPayment = () => {
         // This would be the function to navigate to payment page after form validation
@@ -184,29 +253,24 @@ export default function Checkout() {
         handleSubmit();
     };
 
-    // Loading state when processing order
-    if (isLoading) {
-        return (
-            <SafeAreaView className="flex-1 bg-white">
-                <StatusBar barStyle="dark-content" backgroundColor="white" />
-                <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="#3b82f6" />
-                    <Text className="mt-4 text-lg text-gray-700 font-medium">Đang xử lý đơn hàng...</Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
+    const handleSelectVoucher = (voucher: VoucherResType | null) => {
+        setSelectedVoucher(voucher);
+    };
 
-    // Success state
-    if (success) {
+    const handleOpenVoucherModal = () => {
+        setVoucherModalVisible(true);
+    };
+
+    // Gộp cả hai trạng thái vào một điều kiện hiển thị để có luồng UX mượt mà hơn
+    if (isLoading || success) {
         return (
             <SafeAreaView className="flex-1 bg-white">
                 <StatusBar barStyle="dark-content" backgroundColor="white" />
                 <View className="flex-1 justify-center items-center px-4">
-                    <Ionicons name="checkmark-circle" size={80} color="#10b981" />
-                    <Text className="mt-4 text-2xl font-bold text-gray-800">Đặt hàng thành công!</Text>
-                    <Text className="mt-2 text-center text-gray-600">Đơn hàng của bạn đã được xác nhận.</Text>
-                    <Text className="mt-1 text-center text-gray-600">Chuyển đến trang thanh toán...</Text>
+                    <ActivityIndicator size="large" color="#3b82f6" />
+                    <Text className="mt-4 text-lg text-gray-700 font-medium">
+                        {success ? "Chuyển đến trang thanh toán..." : "Đang xử lý ..."}
+                    </Text>
                 </View>
             </SafeAreaView>
         );
@@ -228,6 +292,9 @@ export default function Checkout() {
             </SafeAreaView>
         );
     }
+
+    // Calculate final amount to pay
+    const finalAmount = directCheckoutItem.totalPrice - discountAmount;
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50">
@@ -261,9 +328,19 @@ export default function Checkout() {
                                 </View>
                             ))}
 
+                        {/* Display discount if voucher is applied */}
+                        {discountAmount > 0 && (
+                            <View className="flex-row justify-between items-center py-2 border-b border-gray-100">
+                                <Text className="text-green-600">Giảm giá:</Text>
+                                <Text className="font-semibold text-green-600">-{formatPrice(discountAmount)}</Text>
+                            </View>
+                        )}
+
                         <View className="flex-row justify-between items-center pt-3 mt-2">
                             <Text className="text-lg font-bold text-gray-800">Tổng cộng:</Text>
-                            <Text className="text-xl font-bold text-orange-500">{formatPrice(directCheckoutItem.totalPrice)}</Text>
+                            <Text className="text-xl font-bold text-orange-500">
+                                {formatPrice(finalAmount)}
+                            </Text>
                         </View>
                     </View>
                 </View>
@@ -283,43 +360,60 @@ export default function Checkout() {
                         <View className="mb-4">
                             <Text className="text-gray-700 mb-1 font-medium">Họ và tên</Text>
                             <TextInput
-                                className="border border-gray-300 rounded-lg p-3 bg-white"
+                                className={`border ${formErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 bg-white`}
                                 value={form.name}
                                 onChangeText={(text) => handleInputChange('name', text)}
                                 placeholder="Nhập họ và tên"
                             />
+                            {formErrors.name && (
+                                <Text className="text-red-500 text-sm mt-1">{formErrors.name}</Text>
+                            )}
                         </View>
 
                         <View className="mb-4">
                             <Text className="text-gray-700 mb-1 font-medium">Email</Text>
                             <TextInput
-                                className="border border-gray-300 rounded-lg p-3 bg-white"
+                                className={`border ${formErrors.email ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 bg-white`}
                                 value={form.email}
                                 onChangeText={(text) => handleInputChange('email', text)}
                                 keyboardType="email-address"
                                 placeholder="Nhập email"
                             />
+                            {formErrors.email && (
+                                <Text className="text-red-500 text-sm mt-1">{formErrors.email}</Text>
+                            )}
                         </View>
 
                         <View className="mb-4">
                             <Text className="text-gray-700 mb-1 font-medium">Số điện thoại</Text>
                             <TextInput
-                                className="border border-gray-300 rounded-lg p-3 bg-white"
+                                className={`border ${formErrors.phoneNumber ? 'border-red-500' : 'border-gray-300'} rounded-lg p-3 bg-white`}
                                 value={form.phoneNumber}
                                 onChangeText={(text) => handleInputChange('phoneNumber', text)}
                                 keyboardType="phone-pad"
                                 placeholder="Nhập số điện thoại"
                             />
+                            {formErrors.phoneNumber && (
+                                <Text className="text-red-500 text-sm mt-1">{formErrors.phoneNumber}</Text>
+                            )}
                         </View>
 
                         <View className="mb-4">
-                            <Text className="text-gray-700 mb-1 font-medium">Mã giảm giá (nếu có)</Text>
-                            <TextInput
-                                className="border border-gray-300 rounded-lg p-3 bg-white"
-                                value={form.voucherCode}
-                                onChangeText={(text) => handleInputChange('voucherCode', text)}
-                                placeholder="Nhập mã giảm giá"
-                            />
+                            <Text className="text-gray-700 mb-1 font-medium">Mã giảm giá</Text>
+                            <TouchableOpacity 
+                                className="border border-gray-300 rounded-lg p-3 bg-white flex-row justify-between items-center"
+                                onPress={handleOpenVoucherModal}
+                            >
+                                <Text className={selectedVoucher ? "text-black" : "text-gray-400"}>
+                                    {selectedVoucher ? selectedVoucher.code : "Chọn mã giảm giá"}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                            </TouchableOpacity>
+                            {selectedVoucher && (
+                                <Text className="text-green-600 text-sm mt-1">
+                                    Giảm {selectedVoucher.percent * 100}% - Tối đa {formatPrice(selectedVoucher.maxDiscountAmount)}
+                                </Text>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -332,6 +426,13 @@ export default function Checkout() {
                     <Text className="text-white text-center font-bold text-lg">Thanh toán</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            <VoucherModal 
+                isVisible={voucherModalVisible}
+                onClose={() => setVoucherModalVisible(false)}
+                onSelectVoucher={handleSelectVoucher}
+                totalAmount={directCheckoutItem.totalPrice}
+            />
         </SafeAreaView>
     );
 }

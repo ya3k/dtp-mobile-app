@@ -1,4 +1,4 @@
-import { View, Text, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Alert } from "react-native"
+import { View, Text, Modal, TouchableOpacity, ScrollView, Dimensions, StyleSheet, Alert, ToastAndroid } from "react-native"
 import React, { useState, useEffect } from "react"
 import type { FullTicketScheduleType } from "@/schemaValidation/ticket-schedule.schema"
 import { formatPrice } from "@/libs/utils"
@@ -166,11 +166,16 @@ const TourScheduleTicket = ({
     addItem(cartItem)
 
     // Show success message
-    Alert.alert(
-      'Thành công',
+    // Alert.alert(
+    //   'Thành công',
+    //   'Đã thêm vào giỏ hàng của bạn.',
+    //   [{ text: 'OK', onPress: () => onClose() }]
+    // )
+    ToastAndroid.show(
       'Đã thêm vào giỏ hàng của bạn.',
-      [{ text: 'OK', onPress: () => onClose() }]
+      ToastAndroid.SHORT
     )
+    onClose();
   }
 
   const handleOrderNow = () => {

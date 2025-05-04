@@ -14,7 +14,7 @@ export default function PaymentScreen() {
   const { clearCart } = useCartStore();
 
   console.log(`Webview: ` + orderId);
-  
+
   // Handle hardware back button on Android
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -58,15 +58,15 @@ export default function PaymentScreen() {
 
     // Check for success patterns in URL - PayOS specific patterns
     if (
-      currentUrl.includes('success') || 
-      currentUrl.includes('return') || 
+      currentUrl.includes('success') ||
+      currentUrl.includes('return') ||
       currentUrl.includes('paymentStatus=PAID') ||
       currentUrl.includes('vnp_ResponseCode=00') ||
       currentUrl.includes('status=true')
     ) {
       // Log full PayOS success URL for debugging
       console.log('PAYMENT SUCCESS DETECTED - FULL URL:', currentUrl);
-      
+
       // Additional PayOS specific logging
       if (currentUrl.includes('payos.vn')) {
         console.log('PayOS Success Details:', {
@@ -74,7 +74,7 @@ export default function PaymentScreen() {
           urlPath: currentUrl.split('?')[0],
           queryParams: currentUrl.includes('?') ? currentUrl.split('?')[1] : 'none'
         });
-        
+
         // Try to parse any query parameters
         try {
           const urlObj = new URL(currentUrl);
@@ -84,12 +84,12 @@ export default function PaymentScreen() {
           console.error('Failed to parse PayOS URL:', err);
         }
       }
-      
+
       // Just update payment status, don't navigate
       setPaymentStatus('success');
       console.log("clear cart")
       clearCart(); // Clear the cart on successful payment
-      
+
     } else if (
       currentUrl.includes('cancel') ||
       currentUrl.includes('error') ||
@@ -192,26 +192,26 @@ export default function PaymentScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text className="text-sm font-medium">Thanh toán</Text>
-        
+        <Text className="text-xl text-center font-medium">Thanh toán</Text>
+
         {/* Thêm nút hiển thị theo trạng thái */}
         {paymentStatus === 'success' && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.replace({
-              pathname: '/(payment)/payment/success',
-              params: { orderId }
+              pathname: '/',
             })}
-            className="bg-green-500 px-3 py-1 rounded-lg"
+          className='mr-5'
           >
-            <Text className="text-white font-medium">Xem đơn hàng</Text>
+            <Ionicons name='home-outline' size={24} />
+
           </TouchableOpacity>
         )}
-        
+
         {paymentStatus === 'pending' && (
-          <View className="w-24" /> 
+          <View className="w-24" />
         )}
       </View>
-      
+
       {/* Status indicator */}
       {paymentStatus === 'success' && (
         <View className="px-4 py-2 bg-green-50 border-b border-green-200">
@@ -220,7 +220,7 @@ export default function PaymentScreen() {
           </Text>
         </View>
       )}
-      
+
       {paymentStatus === 'cancelled' && (
         <View className="px-4 py-2 bg-red-50 border-b border-red-200">
           <Text className="text-red-700 font-medium">
@@ -228,7 +228,7 @@ export default function PaymentScreen() {
           </Text>
         </View>
       )}
-      
+
       <WebView
         ref={webViewRef}
         source={{ uri: url }}
@@ -255,34 +255,52 @@ export default function PaymentScreen() {
         scrollEnabled={true}
         allowsFullscreenVideo={true}
       />
-      
+
       {/* Bottom Action Bar */}
       {paymentStatus !== 'pending' && (
         <View className="p-4 border-t border-gray-200 bg-white">
-          <View className="flex-row justify-between">
+          <View className="flex-row justify-between space-x-3">
             {paymentStatus === 'success' && (
-              <TouchableOpacity
-                className="bg-core-400 py-3 rounded-xl flex-1"
-                onPress={() => router.replace({
-                  pathname: '/(payment)/payment/success',
-                  params: { orderId }
-                })}
-              >
-                <Text className="text-white font-bold text-lg text-center">Xem chi tiết đơn hàng</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  className="flex-1 bg-core-400 py-3 rounded-xl"
+                  onPress={() =>
+                    router.replace({
+                      pathname: '/(payment)/payment/success',
+                      params: { orderId },
+                    })
+                  }
+                >
+                  <Text className="text-white font-bold text-lg text-center">
+                    Xem chi tiết đơn hàng
+                  </Text>
+                </TouchableOpacity>
+
             )}
-            
+
             {paymentStatus === 'cancelled' && (
-              <TouchableOpacity
-                className="bg-gray-500 py-3 rounded-xl flex-1"
-                onPress={() => router.back()}
-              >
-                <Text className="text-white font-bold text-lg text-center">Quay lại</Text>
-              </TouchableOpacity>
+              <View>
+                <TouchableOpacity
+                  className="bg-gray-500 py-3 rounded-xl flex-1"
+                  onPress={() => router.back()}
+                >
+                  <Text className="text-white font-bold text-lg text-center">
+                    Quay lại
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="bg-core-400 py-3 rounded-xl flex-1"
+                  onPress={() => router.replace('/')}
+                >
+                  <Text className="text-white font-bold text-lg text-center">
+                    Về trang chủ
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
       )}
-    </SafeAreaView>
+
+    </SafeAreaView >
   );
 }
