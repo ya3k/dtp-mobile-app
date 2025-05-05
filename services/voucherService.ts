@@ -17,7 +17,7 @@ export const voucherApiRequest = {
             // const filter = `$filter=expiryDate gt cast(${today}, Edm.Date) and isDeleted eq false`;
             const filter = `$filter=expiryDate gt cast(${today}, Edm.Date)`;
 
-            const url = `${apiEndpoint.oVoucher}?$count=true&${encodeURI(filter)}`;
+            const url = `${apiEndpoint.odataVoucher}?$count=true&${encodeURI(filter)}`;
             console.log(url)
             const response = await api.get<OdataResponse<VoucherResType>>(url);
             console.log(JSON.stringify(response.data))

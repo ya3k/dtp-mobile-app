@@ -67,11 +67,11 @@ const VoucherModal: React.FC<VoucherModalProps> = ({
         onPress={() => handleSelectVoucher(item)}
       >
         <View className="flex-row justify-between items-center">
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1 mr-3">
             <View className="bg-core-100 rounded-full p-2 mr-3">
               <Ionicons name="ticket-outline" size={24} color="#FF6B35" />
             </View>
-            <View>
+            <View className="flex-shrink">
               <Text className="font-bold text-gray-800">{item.code}</Text>
               <Text className="text-sm text-gray-600">
                 Giảm {discountPercent}% tối đa {formatPrice(item.maxDiscountAmount)}
@@ -81,7 +81,7 @@ const VoucherModal: React.FC<VoucherModalProps> = ({
               </Text>
             </View>
           </View>
-          <Text className="font-bold text-core-500">-{formatPrice(discountAmount)}</Text>
+          <Text className="font-bold text-core-500 flex-shrink-0 ml-2">-{formatPrice(discountAmount)} </Text>
         </View>
       </TouchableOpacity>
     );

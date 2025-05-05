@@ -5,13 +5,48 @@ import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/libs/utils';
 import { Ionicons } from '@expo/vector-icons';
 import { orderApiRequest } from '@/services/orderService';
-import { OrderRequestType, orderRequestSchema } from '@/schemaValidation/order.schema';
+import { OrderRequestType, orderRequestSchema, TicketKind } from '@/schemaValidation/order.schema';
 import * as Linking from 'expo-linking';
 import { PaymentRequestType } from '@/schemaValidation/payment.schema';
 import Constants from 'expo-constants';
 import { z } from 'zod';
-import VoucherModal from '@/app/components/VoucherModal';
+
 import { VoucherResType } from '@/schemaValidation/voucher.schema';
+import VoucherModal from '@/components/voucher/VoucherModal';
+
+// Utility function to show all ticket types (for reference)
+const showAllTicketTypes = () => {
+    const ticketTypes = [
+        { value: TicketKind.Adult, label: 'Vé người lớn' },
+        { value: TicketKind.Child, label: 'Vé trẻ em' },
+        { value: TicketKind.PerGroupOfThree, label: 'Nhóm 3 người' },
+        { value: TicketKind.PerGroupOfFive, label: 'Nhóm 5 người' },
+        { value: TicketKind.PerGroupOfSeven, label: 'Nhóm 7 người' },
+        { value: TicketKind.PerGroupOfTen, label: 'Nhóm 10 người' },
+    ];
+    
+    return ticketTypes;
+};
+
+// Function to get ticket kind label
+const getTicketKindLabel = (kind: number): string => {
+    switch (kind) {
+        case 0: // TicketKind.Adult
+            return 'Vé người lớn';
+        case 1: // TicketKind.Child
+            return 'Vé trẻ em';
+        case 2: // TicketKind.PerGroupOfThree
+            return 'Nhóm 3 người';
+        case 3: // TicketKind.PerGroupOfFive
+            return 'Nhóm 5 người';
+        case 4: // TicketKind.PerGroupOfSeven
+            return 'Nhóm 7 người';
+        case 5: // TicketKind.PerGroupOfTen
+            return 'Nhóm 10 người';
+        default:
+            return 'Vé tham quan';
+    }
+};
 
 // Form validation schema based on orderRequestSchema
 const checkoutFormSchema = z.object({
@@ -323,7 +358,7 @@ export default function Checkout() {
                             .filter(ticket => ticket.quantity > 0)
                             .map(ticket => (
                                 <View key={ticket.id} className="flex-row justify-between items-center py-2 border-b border-gray-100">
-                                    <Text className="text-gray-700">{ticket.kind} x {ticket.quantity}</Text>
+                                    <Text className="text-gray-700">{getTicketKindLabel(ticket.kind)} x {ticket.quantity}</Text>
                                     <Text className="font-semibold">{formatPrice(ticket.price * ticket.quantity)}</Text>
                                 </View>
                             ))}
