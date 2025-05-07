@@ -76,12 +76,13 @@ export type TourDetailDataResType = z.infer<typeof TourDetailDataSchema>;
 export type TicketTypeResType = z.infer<typeof TicketTypeSchema>;
 
 export const feedBackSchema = z.object({
-tourScheduleId: z.string(),
-description: z.string()
+  tourScheduleId: z.string(),
+  description: z.string()
 })
 
 export const ratingSchema = z.object({
   tourId: z.string(),
+  bookingId: z.string(),
   star: z.number(),
   comment: z.string(),
   images: z.array(z.string())

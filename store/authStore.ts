@@ -80,6 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const state = get();
     const now = Date.now();
     
+    // console.log(state.accessToken)
     // Check if token exists and is not expired
     if (state.accessToken && state.expiresAt && state.expiresAt > now) {
       return true;

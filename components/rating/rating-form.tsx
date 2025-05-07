@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, Image, ScrollView, ActivityIndicator, Alert, ToastAndroid } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { useNavigation } from 'expo-router'
 import { tourApiRequest } from '@/services/tourService'
 import uploadApiRequest, { ImageInfo } from '@/services/uploadService'
 import { RatingType, FeedBackType } from '@/schemaValidation/tour.schema'
-import { getAccessToken } from '@/libs/tokenHelper'
+import { useAuthStore } from '@/store/authStore'
 
 // Constants
 const MAX_PHOTOS = 6
@@ -15,11 +15,13 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 type RatingFormProps = {
     tourId: string
     tourScheduleId: string
+    bookingId: string
 }
 
-const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
+const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
     const navigation = useNavigation()
     const [isLoading, setIsLoading] = useState(false)
+    const isAuthenticated = useAuthStore(state => state.isAuthenticated)
 
     // Form states
     const [rating, setRating] = useState(0)
@@ -35,29 +37,25 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
 
     // Debug authentication token on mount
     useEffect(() => {
-        const checkAuthToken = async () => {
-            try {
-                const token = await getAccessToken()
-                console.log('[DEBUG] Current authentication token:', token ? token.substring(0, 15) + '...' : 'No token')
-                
-                if (!token) {
-                    console.error('[DEBUG] WARNING: No authentication token found. This will cause 401 errors when calling API.')
-                }
-            } catch (error) {
-                console.error('[DEBUG] Error checking auth token:', error)
+        const checkAuth = () => {
+            const isAuth = isAuthenticated()
+            if (!isAuth) {
+                // User is not authenticated
             }
         }
-        
-        checkAuthToken()
-    }, [])
+
+        checkAuth()
+    }, [isAuthenticated])
 
     // Show toast message
     const showToast = (message: string, type: 'success' | 'error') => {
-        Alert.alert(
-            type === 'success' ? 'Thành công' : 'Lỗi',
+        ToastAndroid.showWithGravityAndOffset(
             message,
-            [{ text: 'OK' }]
-        )
+            ToastAndroid.SHORT,
+            ToastAndroid.BOTTOM,
+            0,    // xOffset
+            100   // yOffset
+          );
     }
 
     // Pick images from gallery
@@ -68,10 +66,8 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
         }
 
         const remainingSlots = MAX_PHOTOS - images.length
-        console.log('[DEBUG] Image picker - remaining slots:', remainingSlots)
 
         try {
-            console.log('[DEBUG] Launching image library...')
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: true,
@@ -79,44 +75,33 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
                 quality: 0.8,
             })
 
-            console.log('[DEBUG] Image picker result - canceled:', result.canceled)
-            console.log('[DEBUG] Image picker result - assets count:', result.assets?.length || 0)
-
             if (!result.canceled) {
                 // Process each selected image
-                console.log('[DEBUG] Processing selected images...')
                 const selectedImages: ImageInfo[] = await Promise.all(
                     result.assets.map(async (asset: ImagePicker.ImagePickerAsset) => {
-                        console.log('[DEBUG] Processing asset:', asset.uri)
                         return await uploadApiRequest.getImageInfoFromUri(asset.uri)
                     })
                 )
 
                 // Validate file types and sizes
-                console.log('[DEBUG] Validating images types...')
                 const validImages = selectedImages.filter(img => {
                     const isTypeValid =
                         img.type === 'image/jpeg' ||
                         img.type === 'image/png' ||
                         img.type === 'image/gif' ||
                         img.type === 'image/webp'
-
-                    console.log('[DEBUG] Image validation -', img.uri, '- type:', img.type, '- valid:', isTypeValid)
                     return isTypeValid
                 })
 
-                console.log('[DEBUG] Adding', validImages.length, 'valid images to state')
                 setImages([...images, ...validImages])
             }
         } catch (error) {
-            console.error('[DEBUG] Error picking images:', error)
             showToast('Không thể chọn ảnh', 'error')
         }
     }
 
     // Remove image
     const removeImage = (index: number) => {
-        console.log('[DEBUG] Removing image at index:', index)
         setImages(images.filter((_, i) => i !== index))
     }
 
@@ -139,45 +124,29 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
             isValid = false
         }
 
-        console.log('[DEBUG] Form validation - valid:', isValid, 'errors:', newErrors)
         setErrors(newErrors)
         return isValid
     }
 
     // Upload images to server
     const handleImageUpload = async (): Promise<string[]> => {
-        console.log('[DEBUG] handleImageUpload - images count:', images.length)
-
         if (images.length > 0) {
             try {
-                // Check auth token before upload
-                const token = await getAccessToken()
-                console.log('[DEBUG] Upload using token:', token ? `${token.substring(0, 10)}...` : 'No token found')
-                
-                if (!token) {
-                    console.error('[DEBUG] ERROR: No auth token for image upload. Will cause 401 error.')
+                // Check auth status before upload
+                if (!isAuthenticated()) {
+                    showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn', 'error')
+                    return []
                 }
-                
-                console.log('[DEBUG] Starting image upload...', images.map(img => img.uri))
 
                 // Use the upload service to upload review images
                 const response = await uploadApiRequest.uploadReviewImages(images)
 
-                console.log('[DEBUG] Upload response:', JSON.stringify(response))
-
                 if (response.urls && response.urls.length > 0) {
-                    console.log('[DEBUG] Upload successful. Received URLs:', response.urls)
                     return response.urls
                 } else {
-                    console.error('[DEBUG] No URL returned from review image upload')
                     return []
                 }
             } catch (error) {
-                console.error('[DEBUG] Error uploading review images:', error)
-                if (error instanceof Error) {
-                    console.error('[DEBUG] Error message:', error.message)
-                    console.error('[DEBUG] Error stack:', error.stack)
-                }
                 showToast('Tải lên ảnh không thành công', 'error')
                 return []
             }
@@ -188,43 +157,30 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
     // Submit rating to server
     const handleRating = async (imageUrls: string[]) => {
         try {
-            // Check auth token before rating submission
-            const token = await getAccessToken()
-            console.log('[DEBUG] Rating submission using token:', token ? `${token.substring(0, 10)}...` : 'No token found')
-            
-            if (!token) {
-                console.error('[DEBUG] ERROR: No auth token for rating submission. Will cause 401 error.')
+            // Check auth status before rating submission
+            if (!isAuthenticated()) {
                 showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn', 'error')
                 return
             }
-            
+
             const ratingData: RatingType = {
                 tourId,
-                star: rating, 
+                bookingId,
+                star: rating,
                 comment: comment,
                 images: imageUrls,
             }
 
-            console.log('[DEBUG] Submitting rating with data:', JSON.stringify(ratingData))
-
             const response = await tourApiRequest.postRating(ratingData)
-            console.log('[DEBUG] Rating submission response:', JSON.stringify(response))
 
             if (response.status === 200 || response.status === 201) {
-                console.log('[DEBUG] Rating submission successful')
                 showToast('Đánh giá thành công', 'success')
                 navigation.goBack()
             } else {
-                console.error('[DEBUG] Rating submission failed with status:', response.status)
                 showToast('Đánh giá không thành công. Vui lòng thử lại.', 'error')
             }
         } catch (error: unknown) {
-            console.error('[DEBUG] Error submitting rating:', error)
-            
             if (error instanceof Error) {
-                console.error('[DEBUG] Error message:', error.message)
-                console.error('[DEBUG] Error stack:', error.stack)
-                
                 const errorMessage = error.message.toLowerCase();
                 if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
                     showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
@@ -232,7 +188,6 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
                     showToast('Đã xảy ra lỗi. Vui lòng thử lại sau.', 'error');
                 }
             } else if (typeof error === 'object' && error !== null) {
-                console.error('[DEBUG] Error details:', JSON.stringify(error))
                 showToast('Đã xảy ra lỗi. Vui lòng thử lại sau.', 'error');
             } else {
                 showToast('Đã xảy ra lỗi. Vui lòng thử lại sau.', 'error');
@@ -245,80 +200,51 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
     // Submit feedback to server
     const handleFeedback = async () => {
         if (!feedback.trim()) {
-            console.log('[DEBUG] Skipping feedback submission - empty feedback')
             return
         }
 
         try {
-            // Check auth token before feedback submission
-            const token = await getAccessToken()
-            console.log('[DEBUG] Feedback submission using token:', token ? `${token.substring(0, 10)}...` : 'No token found')
-            
-            if (!token) {
-                console.error('[DEBUG] ERROR: No auth token for feedback submission. Will cause 401 error.')
+            // Check auth status before feedback submission
+            if (!isAuthenticated()) {
                 return
             }
-            
+
             const feedbackData: FeedBackType = {
                 tourScheduleId: tourScheduleId,
                 description: feedback,
             }
 
-            console.log('[DEBUG] Submitting feedback with data:', JSON.stringify(feedbackData))
-
             const response = await tourApiRequest.postFeedback(feedbackData)
-            console.log('[DEBUG] Feedback submission response:', JSON.stringify(response))
         } catch (error) {
-            console.error('[DEBUG] Error submitting feedback:', error)
-            if (error instanceof Error) {
-                console.error('[DEBUG] Error message:', error.message)
-            }
             // We don't show error for feedback as it's optional
         }
     }
 
     // Handle form submission
     const onSubmit = async () => {
-        console.log('[DEBUG] Submitting form... Tour ID:', tourId, 'Tour Schedule ID:', tourScheduleId)
-        
-        // Check auth token before starting submission
-        const token = await getAccessToken()
-        console.log('[DEBUG] Form submission using token:', token ? `${token.substring(0, 10)}...` : 'No token found')
-        
-        if (!token) {
-            console.error('[DEBUG] ERROR: No auth token for submission process. Will cause 401 errors.')
+        // Check auth status before starting submission
+        if (!isAuthenticated()) {
             showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error')
             return
         }
-        
+
         if (!validateForm()) {
-            console.log('[DEBUG] Form validation failed, aborting submission')
             return
         }
-        
+
         setIsLoading(true)
-        console.log('[DEBUG] Starting submission process...')
-        
+
         try {
             // Submit feedback first (it's optional)
-            console.log('[DEBUG] Step 1: Submitting feedback')
             await handleFeedback()
-            
+
             // Upload images and get URLs
-            console.log('[DEBUG] Step 2: Uploading images')
             const imageUrls = await handleImageUpload()
-            console.log('[DEBUG] Image URLs received:', imageUrls)
-            
+
             // Submit rating with image URLs
-            console.log('[DEBUG] Step 3: Submitting rating')
             await handleRating(imageUrls)
         } catch (error: unknown) {
-            console.error('[DEBUG] Error in submission process:', error)
-            
             if (error instanceof Error) {
-                console.error('[DEBUG] Error message:', error.message)
-                console.error('[DEBUG] Error stack:', error.stack)
-                
                 const errorMessage = error.message.toLowerCase();
                 if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
                     showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error');
@@ -326,12 +252,11 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
                     showToast('Đã xảy ra lỗi. Vui lòng thử lại sau.', 'error');
                 }
             } else if (typeof error === 'object' && error !== null) {
-                console.error('[DEBUG] Error details:', JSON.stringify(error))
                 showToast('Đã xảy ra lỗi. Vui lòng thử lại sau.', 'error');
             } else {
                 showToast('Đã xảy ra lỗi. Vui lòng thử lại sau.', 'error');
             }
-            
+
             setIsLoading(false)
         }
     }
@@ -433,13 +358,13 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
                     onPress={() => navigation.goBack()}
                     className="flex-1 py-3 rounded-lg border border-gray-300 items-center justify-center"
                 >
-                    <Text className="text-black font-medium">Quay lại</Text>
+                    <Text className="text-black text-lg font-medium">Quay lại</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     onPress={onSubmit}
                     disabled={isLoading}
-                    className={`flex-1 border border-core-300 py-3 rounded-lg items-center justify-center ${isLoading ? 'bg-teal-700 opacity-70' : 'bg-teal-700'
+                    className={`flex-1 border border-core-300 py-3 rounded-lg items-center justify-center ${isLoading ? 'bg-teal-700 opacity-70' : 'bg-teal-600'
                         }`}
                 >
                     {isLoading ? (
@@ -448,7 +373,7 @@ const RatingForm = ({ tourId, tourScheduleId }: RatingFormProps) => {
                             <Text className="text-black font-medium ml-2">Đang xử lý...</Text>
                         </View>
                     ) : (
-                        <Text className="text-black font-medium">Đánh giá ngay</Text>
+                        <Text className="text-black text-lg font-medium">Đánh giá ngay</Text>
                     )}
                 </TouchableOpacity>
             </View>

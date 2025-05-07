@@ -4,7 +4,7 @@ import { OrderHistoryType, OrderStatus } from '@/schemaValidation/order.schema'
 import { orderApiRequest } from '@/services/orderService';
 import { router, useNavigation } from 'expo-router';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { formatDate } from '@/libs/utils';
+import { formatDate, formatPrice } from '@/libs/utils';
 
 const ReviewList = () => {
     const [orders, setOrders] = useState<OrderHistoryType[]>([]);
@@ -94,10 +94,10 @@ const ReviewList = () => {
                     ))}
 
                     <Text className="text-sm text-gray-700 mt-2">
-                        Tổng: {order.finalCost.toLocaleString('vi-VN')} VND
+                        Tổng: {formatPrice(order.finalCost)}
                     </Text>
 
-                    {/* {order.canRating && ( */}
+                    {order.canRating && (
                     <TouchableOpacity
                         className="mt-3 bg-teal-600 py-2 px-4 rounded-md self-start flex-row items-center"
                         onPress={() => {
@@ -107,7 +107,7 @@ const ReviewList = () => {
                         <Feather name="edit" size={14} color="#ffffff" />
                         <Text className="text-white text-xs ml-2">Gửi đánh giá</Text>
                     </TouchableOpacity>
-                    {/* )} */}
+                     )}
                 </View>
 
                 <View className="ml-3 w-24 h-24 rounded-md overflow-hidden">

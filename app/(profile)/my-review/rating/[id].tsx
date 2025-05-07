@@ -33,6 +33,7 @@ const RatingAndFeedBack = () => {
     const [orderDetail, setOrderDetail] = useState<OrderDetailType>()
     const [isLoading, setIsLoading] = useState(true)
 
+    // console.log(id)
     const fetchOrderDetail = async (orderId: string) => {
         try {
             setIsLoading(true)
@@ -125,10 +126,16 @@ const RatingAndFeedBack = () => {
                                         </Text>
                                     </View>
                                 ))}
+                                 <View className="flex-row justify-between mt-2 py-3 px-4 border-t border-gray-200">
+                                    <Text>Giảm giá: </Text>
+                                    <Text className="font-semibold text-green-500">
+                                        {formatPrice(orderDetail.discountAmount)}
+                                    </Text>
+                                </View>
                                 <View className="flex-row justify-between mt-2 py-3 px-4 border-t border-gray-200">
                                     <Text className="font-bold">Tổng tiền</Text>
-                                    <Text className="font-semibold text-teal-700">
-                                        {formatPrice(orderDetail.grossCost)}
+                                    <Text className="font-semibold text-teal-600">
+                                        {formatPrice(orderDetail.netCost)}
                                     </Text>
                                 </View>
                             </View>
@@ -139,6 +146,7 @@ const RatingAndFeedBack = () => {
                             <RatingForm 
                                 tourId={orderDetail.tourId} 
                                 tourScheduleId={orderDetail.tourScheduleId}
+                                bookingId={id as string}
                             />
                         )}
                     </View>

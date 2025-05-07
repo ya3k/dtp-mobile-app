@@ -45,13 +45,13 @@ const isPublicEndpoint = (url: string | undefined): boolean => {
     path = path.substring(BASE_URL.length);
   }
   
-  // Check if the URL matches any public endpoint
+  // Check if the URL exactly matches any public endpoint
   return publicEndpoints.some(endpoint => {
     // Handle endpoints with and without trailing slash
     if (endpoint.endsWith('/')) {
-      return path === endpoint || path.startsWith(endpoint);
+      return path === endpoint;
     } else {
-      return path === endpoint || path.startsWith(endpoint + '/');
+      return path === endpoint || path === endpoint + '/';
     }
   });
 };

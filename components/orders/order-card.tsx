@@ -99,7 +99,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onPress }) => {
         
         {/* Total */}
         <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-gray-200">
-          <Text className="font-bold text-gray-800">Tổng cộng</Text>
+          <Text className="font-bold text-gray-800">Tổng tiền</Text>
           <Text className="text-lg font-bold text-core-500">
             {new Intl.NumberFormat('vi-VN', { 
               style: 'currency', 
