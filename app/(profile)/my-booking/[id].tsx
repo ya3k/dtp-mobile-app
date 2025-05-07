@@ -6,7 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Image
+  Image,
+  ToastAndroid
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -123,7 +124,8 @@ const OrderDetail = () => {
       setPaymentLoading(true);
       const response = await orderApiRequest.cancelPaymentByOrderId(id as string);
       console.log(response);
-      alert('Hủy đơn hàng thành công');
+      // alert('Hủy đơn hàng thành công');
+      ToastAndroid.show('Hủy đơn hàng thành công', ToastAndroid.SHORT);
       fetchOrderDetail();
       
       // router.replace('/(profile)/my-booking/order-history');

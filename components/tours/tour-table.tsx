@@ -18,7 +18,7 @@ const TourTable: React.FC<TourTableProps> = ({
 }) => {
   const { width } = Dimensions.get('window');
   const cardWidth = (width - 32 - 8) / 2; // 32px for horizontal padding (16px on each side) and 8px for gap between cards
-  
+
   // Use this key to force re-render of FlatList when numColumns changes
   const listKey = useMemo(() => "grid-2-columns", []);
 
@@ -39,11 +39,13 @@ const TourTable: React.FC<TourTableProps> = ({
   }
 
   const renderTourItem = ({ item }: { item: TourResType }) => (
-    <TourCard 
-      tour={item} 
-      onPress={onTourPress}
-      style={{ width: cardWidth }}
-    />
+   
+      <TourCard
+        tour={item}
+        onPress={onTourPress}
+        style={{ width: cardWidth }}
+      />
+
   );
 
   return (

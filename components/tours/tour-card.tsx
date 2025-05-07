@@ -71,13 +71,13 @@ const TourCard: React.FC<TourCardProps> = ({ tour, onPress, style }) => {
       ]}
     >
       <TouchableOpacity
-        className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100/50 mb-4"
+        className="bg-white rounded-2xl overflow-hidden shadow-lg border border-solid border-gray-200 mb-4"
         activeOpacity={0.9}
         onPress={() => onPress && onPress(tour)}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
       >
-        <View className="relative">
+        <View className="relative ">
           {imageLoading && (
             <View className="w-full h-44 bg-gray-100 items-center justify-center">
               <Text className="text-gray-400 text-sm">Loading...</Text>
@@ -109,7 +109,7 @@ const TourCard: React.FC<TourCardProps> = ({ tour, onPress, style }) => {
         </View>
 
         <View className="p-2">
-          <Text numberOfLines={2} className="font-bold text-gray-800 text-base mb-1 leading-[22px]">
+          <Text numberOfLines={1} className="font-bold text-gray-800 text-base mb-1 leading-[22px]">
             {tour.title}
           </Text>
 

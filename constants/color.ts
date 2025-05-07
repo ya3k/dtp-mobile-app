@@ -40,6 +40,8 @@ export const COLORS = {
   // Other specific colors
   tabBarActive: '#15B6CB',
   tabBarInactive: '#BDBDBD',
+
+  core: 'hsl(184.62, 69.15%, 95%)'
 }
 
 export default COLORS;

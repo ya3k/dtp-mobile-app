@@ -339,7 +339,7 @@ export default function Checkout() {
                     <TouchableOpacity onPress={() => router.back()} className="p-2">
                         <Ionicons name="arrow-back" size={24} color="#000" />
                     </TouchableOpacity>
-                    <Text className="text-xl font-bold text-gray-800">Xác nhận đơn hàng</Text>
+                    <Text className="text-xl text-center font-bold text-gray-800">Xác nhận đơn hàng</Text>
                     <View className="w-8" />
                 </View>
 

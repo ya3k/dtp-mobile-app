@@ -51,10 +51,10 @@ export default function Index() {
       setFilteredTours(tours);
       return;
     }
-    
+
     const lowercasedQuery = text.toLowerCase();
-    const filtered = tours.filter(tour => 
-      tour.title.toLowerCase().includes(lowercasedQuery) || 
+    const filtered = tours.filter(tour =>
+      tour.title.toLowerCase().includes(lowercasedQuery) ||
       (tour.description && tour.description.toLowerCase().includes(lowercasedQuery)) ||
       (tour.companyName && tour.companyName.toLowerCase().includes(lowercasedQuery))
     );
@@ -76,19 +76,20 @@ export default function Index() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      <SearchInput 
-        value={searchQuery}
-        onChangeText={handleSearch}
-        onClear={clearSearch}
-      />
-      
+        <SearchInput
+          value={searchQuery}
+          onChangeText={handleSearch}
+          onClear={clearSearch}
+        />
+
+
       {error ? (
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-red-500 text-center">{error}</Text>
         </View>
       ) : (
-        <TourTable 
-          tours={filteredTours} 
+        <TourTable
+          tours={filteredTours}
           isLoading={isLoading}
           onTourPress={handleTourPress}
           refreshControl={

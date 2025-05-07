@@ -59,7 +59,7 @@ const WalletScreen = () => {
           <TouchableOpacity onPress={handleBack} className="p-2 mr-3rounded-full">
             <Ionicons name="arrow-back" size={22} color="#333" />
           </TouchableOpacity>
-          <Text className="text-xl font-semibold text-gray-800">Ví của tôi</Text>
+          <Text className="text-2xl font-bold text-gray-800">Ví của tôi</Text>
         </View>
       </View>
       

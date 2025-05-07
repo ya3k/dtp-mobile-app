@@ -88,7 +88,7 @@ const Profile = () => {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loginPrompt}>
-          <Text style={styles.loginTitle}>Bạn chưa đăng nhập</Text>
+          <Text style={styles.loginTitle}>Bạn chưa đăng nhập </Text>
           <Text style={styles.loginSubtitle}>
             Vui lòng đăng nhập để xem thông tin tài khoản và quản lý đơn hàng của bạn
           </Text>

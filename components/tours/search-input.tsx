@@ -16,8 +16,8 @@ const SearchInput: React.FC<SearchInputProps> = ({
   placeholder = 'Search tours...'
 }) => {
   return (
-    <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2 mx-4 mb-2 mt-4 border border-black">
-      <Ionicons name="search" size={20} color="#6b7280" />
+    <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2 mx-4 mb-2 mt-4 ">
+      <Ionicons className='ml-4' name="search" size={20} color="#6b7280" />
       <TextInput
         className="flex-1 ml-2 text-gray-800"
         value={value}
@@ -28,7 +28,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
       />
       {value.length > 0 && (
         <TouchableOpacity onPress={onClear} className="p-1">
-          <Ionicons name="close-circle" size={20} color="#6b7280" />
+          <Ionicons className='mr-3' name="close-circle" size={20} color="#6b7280" />
         </TouchableOpacity>
       )}
     </View>
