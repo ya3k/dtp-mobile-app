@@ -80,7 +80,7 @@ export const feedBackSchema = z.object({
   description: z.string()
 })
 
-export const ratingSchema = z.object({
+export const  ratingSchema = z.object({
   tourId: z.string(),
   bookingId: z.string(),
   star: z.number(),

@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
 import React, { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Modal from 'react-native-modal'; // 🛠 Important: using RN Modal
+import RenderHTML from 'react-native-render-html';
 
 interface TourDescriptionProps {
   description: string;
@@ -13,11 +14,16 @@ export default function TourDescription({ description }: TourDescriptionProps) {
   const previewLength = 150;
   const isLong = description.length > previewLength;
   const previewText = isLong ? description.slice(0, previewLength) + '...' : description;
+  const { width } = useWindowDimensions();
 
   return (
     <View>
       {/* Preview */}
-      <Text className="text-base text-gray-700">{previewText}</Text>
+      {/* <Text className="text-base text-gray-700">{previewText}</Text> */}
+      <RenderHTML 
+                  contentWidth={width} 
+                  source={{ html: previewText }} 
+                />
 
       {/* Show More Button */}
       {isLong && (
@@ -49,7 +55,10 @@ export default function TourDescription({ description }: TourDescriptionProps) {
 
           {/* Scroll content */}
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text className="text-gray-700 text-lg leading-8">{description}</Text>
+          <RenderHTML 
+                  contentWidth={width} 
+                  source={{ html: description }} 
+                />
           </ScrollView>
         </View>
       </Modal>

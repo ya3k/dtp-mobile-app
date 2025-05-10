@@ -44,14 +44,15 @@ const _Layout = () => {
                 ),
                 tabBarLabel: 'Trang chủ'
             }} />
-            <Tabs.Screen name="basket" options={{
+            {/* <Tabs.Screen name="basket" options={{
                 title: 'Giỏ Hàng',
                 headerShown: false,
                 tabBarIcon: ({ color, size }) => (
                     <Ionicons name="cart-outline" size={size} color={color} />
                 ),
-                tabBarLabel: 'Giỏ Hàng'
-            }} />
+                tabBarLabel: 'Giỏ Hàng',
+                tabBarShowLabel: false
+            }} /> */}
             <Tabs.Screen name="account" options={{
                 title: 'Tài khoản',
                 headerShown: false,

@@ -35,6 +35,7 @@ export const apiEndpoint = {
     odataVoucher: `/odata/Voucher/Own()`,
     oVoucher: `/odata/voucher`,
     //upload
-    upload: "/api/media"
+    upload: "/api/media",
+    setting: "/api/system"
   };
   

@@ -92,7 +92,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onPress }) => {
               {new Intl.NumberFormat('vi-VN', { 
                 style: 'currency', 
                 currency: 'VND' 
-              }).format(ticket.grossCost)}
+              }).format(ticket.grossCost)} 
             </Text>
           </View>
         ))}
@@ -104,8 +104,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, onPress }) => {
             {new Intl.NumberFormat('vi-VN', { 
               style: 'currency', 
               currency: 'VND' 
-            }).format(order.finalCost)}
-          </Text>
+            }).format(order.finalCost)} </Text>
         </View>
       </View>
       

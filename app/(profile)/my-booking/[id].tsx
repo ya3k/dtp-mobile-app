@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { OrderDetailType, OrderStatus, TicketKind } from '@/schemaValidation/order.schema';
 import { orderApiRequest } from '@/services/orderService';
 import { formatDateTime } from '@/libs/utils';
+import { useSettingStore } from '@/store/settingStore';
 
 // Function to format date string to DD-MM-YYYY
 const formatDate = (dateString: string): string => {
@@ -79,6 +80,7 @@ const OrderDetail = () => {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const router = useRouter();
   const navigation = useNavigation();
+  const { getSettingValueByKey } = useSettingStore();
 
   const fetchOrderDetail = async () => {
     if (!id) {
@@ -90,6 +92,8 @@ const OrderDetail = () => {
     try {
       setIsLoading(true);
       const data = await orderApiRequest.getOrderDetail(id as string);
+      console.log(JSON.stringify(data))
+
       setOrderDetail(data);
       setError(null);
     } catch (err) {
@@ -123,7 +127,8 @@ const OrderDetail = () => {
     try {
       setPaymentLoading(true);
       const response = await orderApiRequest.cancelPaymentByOrderId(id as string);
-      console.log(response);
+     
+      console.log(JSON.stringify(response))
       // alert('Hủy đơn hàng thành công');
       ToastAndroid.show('Hủy đơn hàng thành công', ToastAndroid.SHORT);
       fetchOrderDetail();
@@ -157,6 +162,19 @@ const OrderDetail = () => {
     } else {
       router.replace('/(profile)/my-booking/order-history');
     }
+  };
+
+  // Get cancellation policy settings
+  const getCancellationPolicy = () => {
+    const noRefundDays = getSettingValueByKey('Thời gian(date) không hoàn tiền(truớc ngày bắt đầu tour)') || 4;
+    const freeRefundDays = getSettingValueByKey('Thời gian(date) miễn phí hoàn tiền') || 1;
+    const partialRefundPercentage = getSettingValueByKey('Phần trăm hoàn tiền chịu phí') || 70;
+
+    return {
+      noRefundDays,
+      freeRefundDays,
+      partialRefundPercentage
+    };
   };
 
   if (isLoading) {
@@ -302,8 +320,7 @@ const OrderDetail = () => {
               {new Intl.NumberFormat('vi-VN', {
                 style: 'currency',
                 currency: 'VND'
-              }).format(orderDetail.netCost)}
-            </Text>
+              }).format(orderDetail.netCost)} </Text>
           </View>
         </View>
 
@@ -408,7 +425,6 @@ const OrderDetail = () => {
         {orderDetail.status === OrderStatus.PAID && (
           <View className="bg-white p-4 rounded-lg mx-2 mb-6 shadow-sm">
             <View className="flex-row flex-wrap items-start gap-3">
-              {/* Cancel Tour Button - FIXED */}
               <View className="mb-2 w-full">
                 <TouchableOpacity
                   disabled={paymentLoading}
@@ -431,9 +447,20 @@ const OrderDetail = () => {
               
               <View className="flex-1">
                 <View>
-                  <Text className="text-sm text-gray-600 mb-2">• Tour đã thanh toán sẽ không được hoàn tiền nếu hủy trong vòng 12h trước khi tour bắt đầu.</Text>
-                  <Text className="text-sm text-gray-600 mb-2">• Nếu hủy trong vòng 24h trước khi tour bắt đầu, bạn sẽ được hoàn tiền 50% giá trị tour.</Text>
-                  <Text className="text-sm text-gray-600">• Tour đã thanh toán sẽ được hoàn tiền 100% nếu hủy trước 3 ngày trước khi tour bắt đầu.</Text>
+                  {(() => {
+                    const { noRefundDays, freeRefundDays, partialRefundPercentage } = getCancellationPolicy();
+                    return (
+                      <>
+                        <Text className="text-sm text-gray-600 mb-2">
+                          • Tour đã thanh toán sẽ không được hoàn tiền nếu hủy trong vòng {noRefundDays} ngày trước khi tour bắt đầu.
+                        </Text>
+                        <Text className="text-sm text-gray-600 mb-2">
+                          • Nếu hủy tour trong vòng {freeRefundDays} ngày sau khi thanh toán, bạn sẽ được hoàn tiền 100% và {partialRefundPercentage}% cho thời gian sau đó..
+                        </Text>
+                       
+                      </>
+                    );
+                  })()}
                 </View>
               </View>
             </View>

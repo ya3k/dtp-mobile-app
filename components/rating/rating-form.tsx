@@ -8,6 +8,11 @@ import uploadApiRequest, { ImageInfo } from '@/services/uploadService'
 import { RatingType, FeedBackType } from '@/schemaValidation/tour.schema'
 import { useAuthStore } from '@/store/authStore'
 
+// Debug logging utility
+const debugLog = (message: string, data?: any) => {
+    console.log(`[RatingForm Debug] ${message}`, data ? data : '')
+}
+
 // Constants
 const MAX_PHOTOS = 6
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -19,6 +24,8 @@ type RatingFormProps = {
 }
 
 const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
+    debugLog('Component mounted with props:', { tourId, tourScheduleId, bookingId })
+    
     const navigation = useNavigation()
     const [isLoading, setIsLoading] = useState(false)
     const isAuthenticated = useAuthStore(state => state.isAuthenticated)
@@ -39,8 +46,9 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
     useEffect(() => {
         const checkAuth = () => {
             const isAuth = isAuthenticated()
+            debugLog('Authentication check:', { isAuthenticated: isAuth })
             if (!isAuth) {
-                // User is not authenticated
+                debugLog('User is not authenticated')
             }
         }
 
@@ -49,23 +57,27 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
 
     // Show toast message
     const showToast = (message: string, type: 'success' | 'error') => {
+        debugLog('Showing toast:', { message, type })
         ToastAndroid.showWithGravityAndOffset(
             message,
             ToastAndroid.SHORT,
             ToastAndroid.BOTTOM,
-            0,    // xOffset
-            100   // yOffset
-          );
+            0,
+            100
+        );
     }
 
     // Pick images from gallery
     const pickImages = async () => {
+        debugLog('Attempting to pick images')
         if (images.length >= MAX_PHOTOS) {
+            debugLog('Maximum photo limit reached')
             showToast('Bạn đã đạt giới hạn ảnh tối đa', 'error')
             return
         }
 
         const remainingSlots = MAX_PHOTOS - images.length
+        debugLog('Remaining image slots:', remainingSlots)
 
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -76,6 +88,7 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
             })
 
             if (!result.canceled) {
+                debugLog('Images selected:', { count: result.assets.length })
                 // Process each selected image
                 const selectedImages: ImageInfo[] = await Promise.all(
                     result.assets.map(async (asset: ImagePicker.ImagePickerAsset) => {
@@ -93,20 +106,24 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
                     return isTypeValid
                 })
 
+                debugLog('Valid images after filtering:', { count: validImages.length })
                 setImages([...images, ...validImages])
             }
         } catch (error) {
+            debugLog('Error picking images:', error)
             showToast('Không thể chọn ảnh', 'error')
         }
     }
 
     // Remove image
     const removeImage = (index: number) => {
+        debugLog('Removing image at index:', index)
         setImages(images.filter((_, i) => i !== index))
     }
 
     // Validate form
     const validateForm = () => {
+        debugLog('Validating form')
         const newErrors = {
             rating: '',
             comment: '',
@@ -124,22 +141,24 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
             isValid = false
         }
 
+        debugLog('Form validation result:', { isValid, errors: newErrors })
         setErrors(newErrors)
         return isValid
     }
 
     // Upload images to server
     const handleImageUpload = async (): Promise<string[]> => {
+        debugLog('Starting image upload')
         if (images.length > 0) {
             try {
-                // Check auth status before upload
                 if (!isAuthenticated()) {
+                    debugLog('Authentication failed during image upload')
                     showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn', 'error')
                     return []
                 }
 
-                // Use the upload service to upload review images
                 const response = await uploadApiRequest.uploadReviewImages(images)
+                debugLog('Image upload response:', response)
 
                 if (response.urls && response.urls.length > 0) {
                     return response.urls
@@ -147,6 +166,7 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
                     return []
                 }
             } catch (error) {
+                debugLog('Error uploading images:', error)
                 showToast('Tải lên ảnh không thành công', 'error')
                 return []
             }
@@ -156,9 +176,10 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
 
     // Submit rating to server
     const handleRating = async (imageUrls: string[]) => {
+        debugLog('Submitting rating with image URLs:', imageUrls)
         try {
-            // Check auth status before rating submission
             if (!isAuthenticated()) {
+                debugLog('Authentication failed during rating submission')
                 showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn', 'error')
                 return
             }
@@ -171,7 +192,9 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
                 images: imageUrls,
             }
 
+            debugLog('Submitting rating data:', ratingData)
             const response = await tourApiRequest.postRating(ratingData)
+            debugLog('Rating submission response:', response)
 
             if (response.status === 200 || response.status === 201) {
                 showToast('Đánh giá thành công', 'success')
@@ -180,6 +203,7 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
                 showToast('Đánh giá không thành công. Vui lòng thử lại.', 'error')
             }
         } catch (error: unknown) {
+            debugLog('Error submitting rating:', error)
             if (error instanceof Error) {
                 const errorMessage = error.message.toLowerCase();
                 if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
@@ -199,13 +223,15 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
 
     // Submit feedback to server
     const handleFeedback = async () => {
+        debugLog('Handling feedback submission')
         if (!feedback.trim()) {
+            debugLog('Feedback is empty, skipping submission')
             return
         }
 
         try {
-            // Check auth status before feedback submission
             if (!isAuthenticated()) {
+                debugLog('Authentication failed during feedback submission')
                 return
             }
 
@@ -214,36 +240,37 @@ const RatingForm = ({ tourId, tourScheduleId, bookingId }: RatingFormProps) => {
                 description: feedback,
             }
 
+            debugLog('Submitting feedback data:', feedbackData)
             const response = await tourApiRequest.postFeedback(feedbackData)
+            debugLog('Feedback submission response:', response)
         } catch (error) {
-            // We don't show error for feedback as it's optional
+            debugLog('Error submitting feedback:', error)
         }
     }
 
     // Handle form submission
     const onSubmit = async () => {
-        // Check auth status before starting submission
+        debugLog('Starting form submission')
         if (!isAuthenticated()) {
+            debugLog('Authentication failed during form submission')
             showToast('Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', 'error')
             return
         }
 
         if (!validateForm()) {
+            debugLog('Form validation failed')
             return
         }
 
         setIsLoading(true)
+        debugLog('Form submission started')
 
         try {
-            // Submit feedback first (it's optional)
             await handleFeedback()
-
-            // Upload images and get URLs
             const imageUrls = await handleImageUpload()
-
-            // Submit rating with image URLs
             await handleRating(imageUrls)
         } catch (error: unknown) {
+            debugLog('Error during form submission:', error)
             if (error instanceof Error) {
                 const errorMessage = error.message.toLowerCase();
                 if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {

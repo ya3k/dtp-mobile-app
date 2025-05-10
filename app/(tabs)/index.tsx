@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, SafeAreaView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { TourResType } from '@/schemaValidation/tour.schema';
 import { tourApiRequest } from '@/services/tourService';
 import TourTable from '@/components/tours/tour-table';
@@ -40,6 +41,13 @@ export default function Index() {
     setRefreshing(true);
     fetchTours(true);
   }, [fetchTours]);
+
+  // Add useFocusEffect to refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchTours();
+    }, [fetchTours])
+  );
 
   useEffect(() => {
     fetchTours();

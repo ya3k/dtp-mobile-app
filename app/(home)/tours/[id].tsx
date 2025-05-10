@@ -113,6 +113,7 @@ const TourDetails = () => {
     try {
       setIsScheduleLoading(true);
       const response = await tourApiRequest.getTicketSchedule(id);
+      // console.log(JSON.stringify(response.data))
 
       // Handle the API response structure
       if (response.success && response.data) {
@@ -164,7 +165,6 @@ const TourDetails = () => {
         setIsLoading(true);
         // Use the existing tourApiRequest service
         const data = await tourApiRequest.getTourDetail(id as string);
-        
         if (isMounted) {
           // Store tour info in Zustand store with include and pickinfor
           setTourInfo(
@@ -287,9 +287,9 @@ const TourDetails = () => {
                   </TouchableOpacity>
 
                   <View className='mt-6'>
-                    <Text className='font-extrabold text-xl'>Bao gồm</Text>
+                    <Text className='font-extrabold text-xl'>Dịch vụ bao gồm</Text>
                     <SafeRenderHtml
-                      html={tourDetail.tour.pickinfor}
+                      html={tourDetail.tour.include}
                       tagsStyles={tagsStyles}
                       systemFonts={systemFonts}
                       renderersProps={renderersProps}
@@ -299,14 +299,14 @@ const TourDetails = () => {
               </View>
 
               {/* Authentication notice */}
-              {!isAuthenticated && (
+              {/* {!isAuthenticated && (
                 <View className="mx-4 my-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
                   <View className="flex-row items-center mb-2">
                     <Ionicons name="information-circle-outline" size={24} color="#3b82f6" />
                     <Text className="ml-2 font-bold text-blue-600">Chức năng đầy đủ</Text>
                   </View>
                   <Text className="text-blue-700 mb-3">
-                    Đăng nhập để đặt tour, xem lịch trình chi tiết và nhận thông tin ưu đãi đặc biệt.
+                    Đăng nhập để đặt tour.
                   </Text>
                   <TouchableOpacity
                     className="bg-blue-500 py-2 rounded-lg"
@@ -315,7 +315,7 @@ const TourDetails = () => {
                     <Text className="text-white font-bold text-center">Đăng nhập ngay</Text>
                   </TouchableOpacity>
                 </View>
-              )}
+              )} */}
 
               {/* about */}
               <View className='mt-3'>
@@ -357,12 +357,12 @@ const TourDetails = () => {
 
         {/* Buttons row */}
         <View className="flex-row gap-4">
-          <TouchableOpacity
+          {/* <TouchableOpacity
             className="bg-amber-400 flex-1 py-4 rounded-2xl font-semibold"
             onPress={handleAddToCart}
           >
             <Text className="font-[800] text-center text-gray-800 text-lg">Thêm vào giỏ hàng</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <TouchableOpacity
             className="bg-orange-500 flex-1 py-4 rounded-2xl font-semibold"
             onPress={handleBookNow}

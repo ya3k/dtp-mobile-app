@@ -41,6 +41,7 @@ const ReviewList = () => {
                     order.tourDate && order.status === OrderStatus.COMPLETED
             );
             console.log(JSON.stringify(validOrders))
+            console.log(JSON.stringify(validOrders))
             const sortOrder = sortOrdersByDate(validOrders)
             setOrders(sortOrder)
 
@@ -94,8 +95,7 @@ const ReviewList = () => {
                     ))}
 
                     <Text className="text-sm text-gray-700 mt-2">
-                        Tổng: {formatPrice(order.finalCost)}
-                    </Text>
+                        Tổng: {formatPrice(order.finalCost)}</Text>
 
                     {order.canRating && (
                     <TouchableOpacity

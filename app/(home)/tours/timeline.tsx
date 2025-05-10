@@ -230,7 +230,7 @@ const Timeline = () => {
         ) : (
           <ScrollView className="flex-1 bg-white">
             {/* Bao gồm section */}
-            <CollapsibleSection title="Bao gồm" section="includes">
+            <CollapsibleSection title="Dịch vụ bao gồm" section="includes">
               {include && (
                 <RenderHtml 
                   contentWidth={width} 
@@ -240,7 +240,7 @@ const Timeline = () => {
             </CollapsibleSection>
             
             {/* Thông tin khác section */}
-            <CollapsibleSection title="Thông tin khác" section="otherInfo">
+            <CollapsibleSection title="Thông đưa/ đón khách" section="otherInfo">
               {pickinfor && (
                 <RenderHtml 
                   contentWidth={width} 
